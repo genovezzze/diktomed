@@ -19,7 +19,13 @@ const jetBrainsMono = localFont({
 export const metadata: Metadata = {
   title: { default: "DiktoMed", template: "%s | DiktoMed" },
   description: "Ārstu diktātu pārvēršana medicīniskajā dokumentācijā slimnīcas serverī.",
-  icons: { icon: [{ url: "/favicon.svg", type: "image/svg+xml" }] },
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "48x48" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
   robots: { index: false, follow: false },
 };
 
