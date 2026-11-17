@@ -361,7 +361,7 @@ export function ReviewWorkspace({ recording, segments, flags }: ReviewWorkspaceP
 
           <div className="mt-4 grid gap-3 rounded-xl bg-black/[0.03] p-3 text-[13px] sm:grid-cols-2 dark:bg-white/[0.04]">
             <label className="flex items-center gap-3">
-              <span className="w-36 shrink-0 text-muted-foreground">Rindas ticamība &lt; {Math.round(lineThreshold * 100)}%</span>
+              <span className="shrink-0 whitespace-nowrap text-muted-foreground">Rindas ticamība &lt; {Math.round(lineThreshold * 100)}%</span>
               <input
                 type="range"
                 min={0.3}
@@ -374,7 +374,7 @@ export function ReviewWorkspace({ recording, segments, flags }: ReviewWorkspaceP
               <span className="shrink-0 whitespace-nowrap text-right tabular-nums">{segments.filter((s) => s.confidence < lineThreshold && !s.edited).length} rindas</span>
             </label>
             <label className="flex items-center gap-3">
-              <span className="w-36 shrink-0 text-muted-foreground">Vārdu ticamība &lt; {Math.round(wordThreshold * 100)}%</span>
+              <span className="shrink-0 whitespace-nowrap text-muted-foreground">Vārdu ticamība &lt; {Math.round(wordThreshold * 100)}%</span>
               <input
                 type="range"
                 min={0.1}

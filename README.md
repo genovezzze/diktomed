@@ -7,8 +7,8 @@ Latvian Whisper model running locally, the draft is checked for the places a
 person must listen to, a transcriber corrects and approves it, and the approved
 document is exported to Word. Nothing is sent to a cloud service.
 
-The interface is in Latvian and follows the Shadowy platform design (same
-fonts, tokens and components).
+The interface is in Latvian and follows the Shadowy platform design (tokens
+and components), set in Poppins.
 
 ## How it works
 
@@ -98,6 +98,5 @@ backups of the `pgdata` and `audio` volumes, and a penetration test.
 
 ## Fonts
 
-Inter, JetBrains Mono and Albert Sans are under the SIL Open Font License.
-Neue Haas Display is a commercial typeface copied from Shadowy: check that its
-licence covers this project, or replace it.
+Poppins (interface and headings) and JetBrains Mono (timestamps), both under
+the SIL Open Font License, self-hosted from `web/public/fonts`.
