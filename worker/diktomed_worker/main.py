@@ -21,6 +21,7 @@ from .audio import AudioError, normalize
 from .config import Settings, load_settings
 from .flags import build_flags, segment_text
 from .llm import suggest
+from .protocol import draft_protocol
 from .vocab import build_initial_prompt
 
 log = logging.getLogger("diktomed.worker")
@@ -79,6 +80,30 @@ def process_job(conn: psycopg.Connection, settings: Settings, transcriber: Trans
     )
 
 
+def process_protocol_job(conn: psycopg.Connection, settings: Settings, job: db.Job) -> None:
+    """Drafts the structured protocol from the approved transcript."""
+    started = time.monotonic()
+    source = db.load_protocol_input(conn, job.recording_id)
+    if source is None:
+        db.mark_failed(conn, job, "Transkripts vēl nav apstiprināts.", final=True)
+        return
+    text, planned_side = source
+    sections = db.load_sections(conn)
+    if not sections:
+        db.mark_failed(conn, job, "Protokola sadaļas nav iestatītas.", final=True)
+        return
+
+    db.set_protocol_processing(conn, job.recording_id)
+    llm = (settings.llm_base_url, settings.llm_model, settings.llm_timeout) if settings.llm_base_url and settings.llm_model else None
+    fields, engine = draft_protocol(sections, text, planned_side, settings.protocol_backend, llm)
+    db.save_protocol(conn, job, sections, fields, engine)
+    warnings = sum(1 for f in fields if f.check not in ("OK", "EMPTY"))
+    log.info(
+        "job %s: protocol for recording %s ready, %d fields, %d warnings, engine %s, %.1fs",
+        job.id, job.recording_id, len(fields), warnings, engine, time.monotonic() - started,
+    )
+
+
 def apply_retention(conn: psycopg.Connection, settings: Settings) -> None:
     """Deletes audio of approved recordings older than RETENTION_DAYS.
     The approved text stays; only the sound files go."""
@@ -127,14 +152,18 @@ def run(settings: Settings, once: bool = False) -> None:
                 continue
 
             try:
-                process_job(conn, settings, transcriber, job)
+                if job.kind == db.PROTOCOL:
+                    process_protocol_job(conn, settings, job)
+                else:
+                    process_job(conn, settings, transcriber, job)
             except AudioError as exc:
                 log.warning("job %s: audio error", job.id)
                 db.mark_failed(conn, job, str(exc), final=True)
             except Exception:  # noqa: BLE001 - one bad file must not stop the queue
                 log.exception("job %s failed (attempt %d)", job.id, job.attempts)
                 final = job.attempts >= settings.max_attempts
-                db.mark_failed(conn, job, "Atpazīšana neizdevās. Sazinieties ar administratoru.", final=final)
+                what = "Protokola sagatavošana" if job.kind == db.PROTOCOL else "Atpazīšana"
+                db.mark_failed(conn, job, f"{what} neizdevās. Sazinieties ar administratoru.", final=final)
         except psycopg.OperationalError:
             log.exception("database connection lost, reconnecting in 5s")
             time.sleep(5)

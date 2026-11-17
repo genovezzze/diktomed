@@ -58,4 +58,11 @@ export const AUDIT_LABELS: Record<string, string> = {
   TERM_REMOVED: "Dzēsa terminu",
   CORRECTION_TOGGLED: "Mainīja labojuma ieteikšanu",
   CORRECTION_REMOVED: "Dzēsa iemācīto labojumu",
+  PROTOCOL_REQUESTED: "Pieprasīja protokolu no jauna",
+  PROTOCOL_DRAFTED: "Protokola melnraksts sagatavots",
+  PROTOCOL_FIELD_ACCEPTED: "Pieņēma protokola lauku",
+  PROTOCOL_FIELD_REJECTED: "Noraidīja protokola lauku",
+  PROTOCOL_FIELD_EDITED: "Laboja protokola lauku",
+  PROTOCOL_APPROVED: "Apstiprināja protokolu",
+  PROTOCOL_DOCX_EXPORTED: "Lejupielādēja protokolu DOCX",
 };

@@ -175,6 +175,13 @@ export async function approveRecording(input: { recordingId: string }): Promise<
       where: { id: recordingId },
       data: { status: "APPROVED", approvedAt: now, approvedById: session.userId },
     });
+    // The structured protocol is drafted from the approved text right away.
+    await tx.protocol.upsert({
+      where: { recordingId },
+      create: { recordingId },
+      update: { status: "QUEUED", errorMessage: null },
+    });
+    await tx.job.create({ data: { recordingId, kind: "PROTOCOL" } });
     return { ok: true as const };
   });
 

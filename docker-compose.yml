@@ -66,6 +66,7 @@ services:
       RETENTION_DAYS: ${RETENTION_DAYS:-0}
       LLM_BASE_URL: ${LLM_BASE_URL:-}
       LLM_MODEL: ${LLM_MODEL:-}
+      PROTOCOL_BACKEND: ${PROTOCOL_BACKEND:-}
     volumes:
       - audio:/data
       - ./models:/models:ro

@@ -9,6 +9,9 @@ from psycopg.types.json import Jsonb
 
 from .asr import Transcript
 from .flags import Correction, FlagDraft, segment_text
+from .protocol import FieldDraft, Section
+
+TRANSCRIBE, PROTOCOL = "TRANSCRIBE", "PROTOCOL"
 
 
 @dataclass(frozen=True)
@@ -16,6 +19,7 @@ class Job:
     id: str
     recording_id: str
     attempts: int
+    kind: str = TRANSCRIBE
 
 
 @dataclass(frozen=True)
@@ -40,7 +44,7 @@ def claim_job(conn: psycopg.Connection) -> Job | None:
                 SELECT id FROM jobs WHERE status = 'QUEUED'
                 ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1
             )
-            RETURNING id::text, recording_id::text, attempts
+            RETURNING id::text, recording_id::text, attempts, kind
             """
         ).fetchone()
     return Job(*row) if row else None
@@ -53,15 +57,21 @@ def requeue_stale(conn: psycopg.Connection, minutes: int, max_attempts: int) -> 
             """
             UPDATE jobs SET status = 'FAILED', error = 'Darbs pārtrūka vairākas reizes.', finished_at = now()
             WHERE status = 'RUNNING' AND locked_at < now() - make_interval(mins => %s) AND attempts >= %s
-            RETURNING recording_id
+            RETURNING recording_id, kind
             """,
             (minutes, max_attempts),
         ).fetchall()
-        for (recording_id,) in failed:
-            conn.execute(
-                "UPDATE recordings SET status = 'FAILED', error_message = 'Apstrāde vairākas reizes pārtrūka.', updated_at = now() WHERE id = %s",
-                (recording_id,),
-            )
+        for recording_id, kind in failed:
+            if kind == PROTOCOL:
+                conn.execute(
+                    "UPDATE protocols SET status = 'FAILED', error_message = 'Sagatavošana vairākas reizes pārtrūka.', updated_at = now() WHERE recording_id = %s",
+                    (recording_id,),
+                )
+            else:
+                conn.execute(
+                    "UPDATE recordings SET status = 'FAILED', error_message = 'Apstrāde vairākas reizes pārtrūka.', updated_at = now() WHERE id = %s",
+                    (recording_id,),
+                )
         requeued = conn.execute(
             """
             UPDATE jobs SET status = 'QUEUED', locked_at = NULL
@@ -171,6 +181,17 @@ def save_transcript(
 def mark_failed(conn: psycopg.Connection, job: Job, message: str, final: bool) -> None:
     """A retryable failure puts the job back in the queue; a final one is shown to the user."""
     conn.rollback()
+    if job.kind == PROTOCOL:
+        with conn.transaction():
+            conn.execute(
+                "UPDATE jobs SET status = %s::job_status, error = %s, locked_at = NULL, finished_at = CASE WHEN %s THEN now() END WHERE id = %s",
+                ("FAILED" if final else "QUEUED", message, final, job.id),
+            )
+            conn.execute(
+                "UPDATE protocols SET status = %s::protocol_status, error_message = %s, updated_at = now() WHERE recording_id = %s",
+                ("FAILED" if final else "QUEUED", message if final else None, job.recording_id),
+            )
+        return
     with conn.transaction():
         if final:
             conn.execute("UPDATE jobs SET status = 'FAILED', error = %s, finished_at = now() WHERE id = %s", (message, job.id))
@@ -208,3 +229,68 @@ def mark_audio_deleted(conn: psycopg.Connection, recording_id: str) -> None:
             (recording_id, Jsonb({"reason": "retention"})),
         )
 
+
+
+# --- protocol ----------------------------------------------------------------
+
+
+def load_protocol_input(conn: psycopg.Connection, recording_id: str) -> tuple[str, str | None] | None:
+    """(approved document text, planned side), or None if not approved."""
+    row = conn.execute(
+        """
+        SELECT d.text, r.planned_side::text FROM documents d JOIN recordings r ON r.id = d.recording_id
+        WHERE d.recording_id = %s AND r.status = 'APPROVED'
+        """,
+        (recording_id,),
+    ).fetchone()
+    conn.commit()
+    return (row[0], row[1]) if row else None
+
+
+def load_sections(conn: psycopg.Connection) -> list[Section]:
+    rows = conn.execute(
+        "SELECT key, title, hint, position, multi FROM protocol_sections WHERE active ORDER BY position"
+    ).fetchall()
+    conn.commit()
+    return [Section(*r) for r in rows]
+
+
+def set_protocol_processing(conn: psycopg.Connection, recording_id: str) -> None:
+    with conn.transaction():
+        conn.execute(
+            "UPDATE protocols SET status = 'PROCESSING', error_message = NULL, updated_at = now() WHERE recording_id = %s",
+            (recording_id,),
+        )
+
+
+def save_protocol(conn: psycopg.Connection, job: Job, sections: list[Section], fields: list[FieldDraft], engine: str) -> None:
+    """Replaces the protocol's fields; every field starts as a suggestion."""
+    titles = {s.key: (s.title, s.position) for s in sections}
+    with conn.transaction():
+        row = conn.execute(
+            """UPDATE protocols SET status = 'READY', engine = %s, error_message = NULL, approved_by_id = NULL,
+               approved_at = NULL, updated_at = now() WHERE recording_id = %s RETURNING id::text""",
+            (engine, job.recording_id),
+        ).fetchone()
+        if row is None:
+            row = conn.execute(
+                "INSERT INTO protocols (recording_id, status, engine) VALUES (%s, 'READY', %s) RETURNING id::text",
+                (job.recording_id, engine),
+            ).fetchone()
+        protocol_id = row[0]
+        conn.execute("DELETE FROM protocol_fields WHERE protocol_id = %s", (protocol_id,))
+        for f in fields:
+            title, position = titles.get(f.key, (f.key, 999))
+            conn.execute(
+                """
+                INSERT INTO protocol_fields (protocol_id, section_key, title, position, value, quotes, "check", check_message, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s::field_check, %s, 'SUGGESTED')
+                """,
+                (protocol_id, f.key, title, position, f.value, Jsonb(f.quotes), f.check, f.check_message),
+            )
+        conn.execute("UPDATE jobs SET status = 'DONE', finished_at = now(), error = NULL WHERE id = %s", (job.id,))
+        warnings = sum(1 for f in fields if f.check not in ("OK", "EMPTY"))
+        conn.execute(
+            "INSERT INTO audit_logs (recording_id, action, details) VALUES (%s, 'PROTOCOL_DRAFTED', %s)",
+            (job.recording_id, Jsonb({"fields": len(fields), "warnings": warnings, "engine": engine})),
+        )

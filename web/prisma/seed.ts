@@ -29,6 +29,21 @@ const STARTER_TERMS = [
   "aseptiska pārsēja",
 ];
 
+// The default protocol form. Titles and hints are what the hospital will most
+// likely want to change to match its own form (Vārdnīca -> later admin UI).
+const DEFAULT_SECTIONS = [
+  { key: "diagnoze", title: "Diagnoze", hint: "Diagnoze, ar kuru pacients operēts (pirms- vai pēcoperācijas).", multi: false },
+  { key: "operacija", title: "Operācija", hint: "Veiktās operācijas nosaukums, ieskaitot pusi (kreisā/labā), ja minēta.", multi: false },
+  { key: "anestezija", title: "Anestēzija", hint: "Anestēzijas veids (narkoze, spinālā, lokālā u.c.).", multi: false },
+  { key: "gaita", title: "Operācijas gaita", hint: "Veiktās darbības secīgi: piekļuve, instrumenti, manipulācijas, slēgšana.", multi: true },
+  { key: "atradne", title: "Atradne", hint: "Kas konstatēts operācijā: bojājumi, patoloģija, arī noliegumi.", multi: true },
+  { key: "asins_zudums", title: "Asins zudums", hint: "Asins zuduma apjoms tieši tā, kā diktēts.", multi: false },
+  { key: "drenaza", title: "Drenāža", hint: "Vai ievietota drenāža, kāda un kur.", multi: false },
+  { key: "komplikacijas", title: "Komplikācijas", hint: "Intraoperatīvās komplikācijas vai to neesamība.", multi: false },
+  { key: "histologija", title: "Histoloģija", hint: "Vai materiāls nosūtīts histoloģiskai izmeklēšanai.", multi: false },
+  { key: "nozimejumi", title: "Nozīmējumi", hint: "Medikamenti un rīkojumi pēc operācijas, ar devām tieši tā, kā diktēts.", multi: true },
+];
+
 async function main() {
   const production = process.env.NODE_ENV === "production";
   const email = (process.env.SEED_ADMIN_EMAIL ?? (production ? "" : "admin@diktomed.local")).trim().toLowerCase();
@@ -67,6 +82,14 @@ async function main() {
       });
       console.log(`Created demo transcriber ${demoEmail}`);
     }
+  }
+
+  if ((await prisma.protocolSection.count()) === 0) {
+    await prisma.protocolSection.createMany({
+      data: DEFAULT_SECTIONS.map((section, position) => ({ ...section, position })),
+      skipDuplicates: true,
+    });
+    console.log(`Added ${DEFAULT_SECTIONS.length} protocol sections`);
   }
 
   if ((await prisma.term.count()) === 0) {

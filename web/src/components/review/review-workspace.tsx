@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ChevronRight, Download, FileAudio, Pause, Play, ShieldCheck } from "lucide-react";
+import { CheckCircle2, ChevronRight, ClipboardList, Download, FileAudio, Pause, Play, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatClock, formatDateTimeLV, formatPercent } from "@/lib/format";
 import { SIDE_LABELS } from "@/lib/labels";
@@ -266,6 +267,14 @@ export function ReviewWorkspace({ recording, segments, flags }: ReviewWorkspaceP
                 {recording.status === "APPROVED" ? "DOCX" : "Melnraksts DOCX"}
               </a>
             </Button>
+            {recording.status === "APPROVED" && (
+              <Button asChild size="sm">
+                <Link href={`/diktati/${recording.id}/protokols`}>
+                  <ClipboardList className="h-3.5 w-3.5" />
+                  Operācijas protokols
+                </Link>
+              </Button>
+            )}
             {canEdit && (
               <Button size="sm" onClick={approve} disabled={pending || counts.HIGH > 0} title={counts.HIGH > 0 ? "Vispirms pārbaudiet augsta riska vietas" : undefined}>
                 <ShieldCheck className="h-3.5 w-3.5" />

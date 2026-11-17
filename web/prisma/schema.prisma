@@ -103,6 +103,9 @@ model User {
   documents Document[]
   auditLogs AuditLog[]
 
+  protocolApprovals Protocol[]      @relation("protocolApprovedBy")
+  protocolEdits     ProtocolField[] @relation("protocolEditedBy")
+
   @@map("users")
 }
 
@@ -139,6 +142,7 @@ model Recording {
   flags      Flag[]
   edits      Edit[]
   document   Document?
+  protocol   Protocol?
   jobs       Job[]
   auditLogs  AuditLog[]
 
@@ -285,4 +289,98 @@ model TermCorrection {
 
   @@unique([wrong, right])
   @@map("term_corrections")
+}
+
+// ---------------------------------------------------------------------------
+// Structured operation protocol, drafted from the APPROVED transcript.
+// Every field carries the exact quotes it was taken from; numbers and the
+// operation side are checked against those quotes. A person accepts each
+// field and approves the protocol. Added in migration 0002.
+// ---------------------------------------------------------------------------
+
+enum ProtocolStatus {
+  QUEUED
+  PROCESSING
+  READY
+  APPROVED
+  FAILED
+
+  @@map("protocol_status")
+}
+
+/// Result of checking a drafted field against the transcript.
+enum FieldCheck {
+  OK
+  EMPTY
+  NO_QUOTE
+  QUOTE_NOT_FOUND
+  NUMBER_MISMATCH
+  SIDE_MISMATCH
+
+  @@map("field_check")
+}
+
+enum FieldStatus {
+  SUGGESTED
+  ACCEPTED
+  EDITED
+  REJECTED
+
+  @@map("field_status")
+}
+
+/// The hospital's protocol form: one row per section. Seeded with defaults;
+/// change titles and hints to match the hospital's own form.
+model ProtocolSection {
+  id       String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key      String  @unique
+  title    String
+  /// What belongs in the section; given to the language model.
+  hint     String
+  position Int
+  /// Several sentences may belong here (e.g. the course of the operation).
+  multi    Boolean @default(false)
+  active   Boolean @default(true)
+
+  @@map("protocol_sections")
+}
+
+model Protocol {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recordingId  String         @unique @map("recording_id") @db.Uuid
+  status       ProtocolStatus @default(QUEUED)
+  engine       String?
+  errorMessage String?        @map("error_message")
+  approvedById String?        @map("approved_by_id") @db.Uuid
+  approvedAt   DateTime?      @map("approved_at") @db.Timestamptz(3)
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  recording  Recording       @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  approvedBy User?           @relation("protocolApprovedBy", fields: [approvedById], references: [id])
+  fields     ProtocolField[]
+
+  @@map("protocols")
+}
+
+model ProtocolField {
+  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  protocolId   String      @map("protocol_id") @db.Uuid
+  sectionKey   String      @map("section_key")
+  title        String
+  position     Int
+  value        String?
+  /// Exact passages of the approved transcript the value is based on.
+  quotes       Json        @default("[]")
+  check        FieldCheck  @default(OK)
+  checkMessage String?     @map("check_message")
+  status       FieldStatus @default(SUGGESTED)
+  editedById   String?     @map("edited_by_id") @db.Uuid
+  updatedAt    DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  protocol Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  editedBy User?    @relation("protocolEditedBy", fields: [editedById], references: [id])
+
+  @@unique([protocolId, sectionKey])
+  @@map("protocol_fields")
 }

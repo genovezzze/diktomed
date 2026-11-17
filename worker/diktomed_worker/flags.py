@@ -232,7 +232,7 @@ def build_flags(
         tokens = text.split()
         char_pos = _token_positions(text, tokens)
         for span in find_numbers(tokens):
-            last = span.last + (1 if span.has_unit and span.last + 1 < len(tokens) else 0)
+            last = span.last + (1 if span.unit_next else 0)
             c_start, c_end = char_pos[span.first][0], char_pos[last][1]
             excerpt = text[c_start:c_end].rstrip(".,;:!?")
             t0, t1 = _time_for_chars(seg, c_start, c_end)

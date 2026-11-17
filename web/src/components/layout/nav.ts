@@ -19,6 +19,7 @@ export function isActive(href: string, pathname: string): boolean {
 /** The current page's name for the top bar. */
 export function pageTitleFor(pathname: string): string {
   if (/^\/diktati\/[^/]+$/.test(pathname)) return "Pārbaude";
+  if (/^\/diktati\/[^/]+\/protokols$/.test(pathname)) return "Protokols";
   const item = NAV_ITEMS.find((i) => isActive(i.href, pathname));
   return item?.label ?? "";
 }

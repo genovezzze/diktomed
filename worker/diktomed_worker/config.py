@@ -48,6 +48,7 @@ class Settings:
     llm_base_url: str | None  # OpenAI-compatible server on the hospital LAN (Ollama, vLLM)
     llm_model: str | None
     llm_timeout: float
+    protocol_backend: str  # "llm" or "rules"
 
 
 def load_settings(env: dict[str, str] | None = None) -> Settings:
@@ -76,4 +77,6 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         llm_base_url=llm_base_url,
         llm_model=(env.get("LLM_MODEL") or "").strip() or None,
         llm_timeout=_float(env, "LLM_TIMEOUT", 120.0),
+        # With a local LLM configured the protocol uses it; otherwise keyword rules.
+        protocol_backend=(env.get("PROTOCOL_BACKEND") or ("llm" if llm_base_url and env.get("LLM_MODEL") else "rules")).strip().lower(),
     )

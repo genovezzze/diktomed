@@ -58,6 +58,11 @@ def test_digit_dose():
     assert [(f.severity, f.excerpt) for f in flags if f.kind == "NUMBER"] == [("MEDIUM", "100 mg")]
 
 
+def test_glued_and_approximate_numbers_are_flagged():
+    flags = build_flags([seg("Ketonāls 100mg, asins zudums ~200 ml.")], 0.7, 0.5, [])
+    assert [(f.severity, f.excerpt) for f in flags if f.kind == "NUMBER"] == [("MEDIUM", "100mg"), ("MEDIUM", "~200 ml")]
+
+
 def test_learned_correction_becomes_suggestion():
     corrections = [Correction("koagulātoru", "koagulatoru", 3)]
     flags = build_flags([seg("Jā, lūdzu, padodiet koagulātoru.")], 0.7, 0.5, corrections)

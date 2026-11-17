@@ -20,8 +20,29 @@ dictaphone file / browser recording
      operation side vs the planned side, words people corrected before, optional local-LLM hints
   -> review screen: waveform, click-to-listen words, edit fragments, accept or dismiss flags
   -> approval by a person -> DOCX export; every view, edit and export is in the audit log
+  -> structured operation protocol from the APPROVED text: each section with exact quotes,
+     numbers and side checked against the quotes and the planned side -> a person accepts
+     every field -> protocol approved -> DOCX
   -> approved pairs (audio + text) -> export, evaluate and fine-tune the model on site
 ```
+
+### Operation protocol
+
+After the transcript is approved, the worker splits it into the sections of
+the protocol form (`protocol_sections`: diagnosis, operation, anaesthesia,
+course, findings, blood loss, drainage, complications, histology, orders).
+Each field is a value plus the exact passages it rests on, and is checked:
+
+| Check | Catches |
+|---|---|
+| quote must be in the approved text | an invented passage |
+| every number in the value must be in its quotes (words and digits: "divdesmit" = 20) | a wrong dose or volume |
+| the side in the value must match the quotes and the planned side | a wrong-site entry |
+
+A field with a warning is shown in orange or red; approval is blocked until a
+person has accepted, edited or rejected every filled field. With a local LLM
+(`LLM_BASE_URL`, `LLM_MODEL`) the fields are drafted by the model; without one,
+or if it is unreachable, keyword rules draft them (`PROTOCOL_BACKEND=rules`).
 
 | Part | What | Where |
 |---|---|---|
@@ -91,8 +112,9 @@ backups of the `pgdata` and `audio` volumes, and a penetration test.
 ## Not yet
 
 - Integration with the hospital information system (today: DOCX export).
-- Speaker labels (surgeon / nurse) and structuring into protocol sections.
-- Operation classification codes and summaries (needs a local LLM, see `LLM_BASE_URL`).
+- Speaker labels (surgeon / nurse), only needed if the hospital records the OR conversation.
+- Operation classification codes: candidates from the official list, chosen by a person.
+- An admin screen for the protocol sections (today: the `protocol_sections` table).
 - Watching an input folder for dictaphone docking stations.
 - SSO with the hospital directory instead of local accounts.
 
