@@ -8,6 +8,7 @@ import { METRIC_SURFACE } from "@/components/dashboard/apple";
 import { ProtocolWorkspace } from "@/components/protocol/protocol-workspace";
 import { parseQuotes, quoteRange } from "@/lib/protocol";
 import { SIDE_LABELS } from "@/lib/labels";
+import { isDemoModel } from "@/lib/demo";
 import { cn } from "@/lib/utils";
 import { RedraftButton } from "./redraft-button";
 
@@ -36,6 +37,7 @@ export default async function ProtocolPage({ params }: { params: { id: string } 
       title: true,
       status: true,
       plannedSide: true,
+      modelName: true,
       audioDeletedAt: true,
       document: { select: { text: true } },
       segments: { orderBy: { idx: "asc" }, select: { start: true, end: true, text: true } },
@@ -100,6 +102,7 @@ export default async function ProtocolPage({ params }: { params: { id: string } 
   } else {
     body = (
       <ProtocolWorkspace
+        demo={isDemoModel(recording.modelName)}
         recordingId={recording.id}
         recordingTitle={recording.title}
         plannedSide={recording.plannedSide ? SIDE_LABELS[recording.plannedSide] : null}

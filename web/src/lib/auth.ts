@@ -37,9 +37,11 @@ export async function getSession(): Promise<CurrentUser | null> {
   // A deactivated account loses access at once, not when its cookie expires.
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { active: true, role: true, name: true, mustChangePassword: true },
+    select: { active: true, role: true, name: true, mustChangePassword: true, sessionVersion: true },
   });
   if (!user || !user.active) return null;
+  // Logged out, password changed or reset since this cookie was issued.
+  if (user.sessionVersion !== session.sv) return null;
   return { ...session, role: user.role, name: user.name, mustChangePassword: user.mustChangePassword };
 }
 
@@ -64,7 +66,14 @@ export async function sessionForApi(roles?: Role[]): Promise<SessionPayload | nu
   return session;
 }
 
+/**
+ * The client's IP for the audit log, or null. Forwarding headers are written
+ * by whoever sends the request, so they are believed only when the operator
+ * says a trusted reverse proxy sets them (TRUST_PROXY=true): otherwise anyone
+ * could fake their IP in the audit log and dodge per-IP login limits.
+ */
 export function clientIp(): string | null {
+  if (process.env.TRUST_PROXY !== "true") return null;
   const h = headers();
   return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || null;
 }
@@ -74,3 +83,13 @@ export const ROLE_LABELS: Record<Role, string> = {
   TRANSCRIBER: "Diktātu speciālists",
   DOCTOR: "Ārsts",
 };
+
+/** Ends every session the user has, on any computer. */
+export async function revokeSessions(userId: string): Promise<number> {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { sessionVersion: { increment: 1 } },
+    select: { sessionVersion: true },
+  });
+  return user.sessionVersion;
+}

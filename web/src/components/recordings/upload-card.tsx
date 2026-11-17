@@ -213,7 +213,7 @@ export function UploadCard({ maxBytes }: { maxBytes: number }) {
             )}
           </>
         )}
-        <input ref={inputRef} type="file" accept={ACCEPT} className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
+        <input ref={inputRef} type="file" aria-label="Izvēlēties audio failu" accept={ACCEPT} className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">

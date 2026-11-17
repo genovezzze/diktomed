@@ -1,6 +1,7 @@
 import path from "node:path";
 import { createReadStream, promises as fs } from "node:fs";
 import { Readable } from "node:stream";
+import { isUuid } from "@/lib/safe-url";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sessionForApi } from "@/lib/auth";
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   const session = await sessionForApi();
   if (!session) return NextResponse.json({ error: "Nepieciešama pieslēgšanās." }, { status: 401 });
+  if (!isUuid(params.id)) return NextResponse.json({ error: "Nav atrasts." }, { status: 404 });
 
   const recording = await prisma.recording.findUnique({
     where: { id: params.id },

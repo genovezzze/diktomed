@@ -42,6 +42,8 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-300}
       CORRECTION_MIN_COUNT: ${CORRECTION_MIN_COUNT:-2}
+      DEMO_MODE: ${DEMO_MODE:-false}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
     volumes:
       - audio:/data
     ports:

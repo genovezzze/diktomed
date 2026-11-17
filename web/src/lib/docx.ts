@@ -2,6 +2,7 @@ import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } fro
 import { formatClock, formatDateTimeLV } from "@/lib/format";
 
 export type DocxInput = {
+  demo?: boolean;
   title: string;
   originalName: string;
   durationSec: number | null;
@@ -22,6 +23,15 @@ function meta(label: string, value: string): Paragraph {
   });
 }
 
+function demoParagraph(): Paragraph {
+  return new Paragraph({
+    spacing: { after: 160 },
+    children: [
+      new TextRun({ text: "DEMO - IZDOMĀTS TEKSTS. NAV PACIENTA DOKUMENTS.", font: FONT, size: 28, bold: true, color: "D70015" }),
+    ],
+  });
+}
+
 /** The approved (or draft) dictation as a Word document. */
 export async function buildDocx(input: DocxInput): Promise<Buffer> {
   const header: Paragraph[] = [
@@ -32,6 +42,7 @@ export async function buildDocx(input: DocxInput): Promise<Buffer> {
     }),
   ];
 
+  if (input.demo) header.push(demoParagraph());
   if (!input.approval) {
     header.push(
       new Paragraph({
@@ -92,6 +103,7 @@ export async function buildDocx(input: DocxInput): Promise<Buffer> {
 }
 
 export type ProtocolDocxInput = {
+  demo?: boolean;
   recordingTitle: string;
   plannedSide: string | null;
   durationSec: number | null;
@@ -110,6 +122,7 @@ export async function buildProtocolDocx(input: ProtocolDocxInput): Promise<Buffe
       children: [new TextRun({ text: "Operācijas protokols", font: FONT, size: 32, bold: true })],
     }),
   ];
+  if (input.demo) children.push(demoParagraph());
   if (!input.approval) {
     children.push(
       new Paragraph({

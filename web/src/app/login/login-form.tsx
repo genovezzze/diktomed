@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { loginAction } from "./actions";
+import { safeNextPath } from "@/lib/safe-url";
 
 // Field and button skins from the Shadowy login screen.
 const fieldClass =
@@ -15,9 +16,8 @@ const primaryClass =
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const rawNext = params.get("next");
-  // Same-origin paths only, so the login page cannot become an open redirect.
-  const nextPath = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
+  // Same-site paths only, so the login page cannot become an open redirect.
+  const nextPath = safeNextPath(params.get("next"), typeof window === "undefined" ? undefined : window.location.origin);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 

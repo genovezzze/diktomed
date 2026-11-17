@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { pendingFields } from "@/lib/protocol";
+import { checkManualValue } from "@/lib/numbers-lv";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -16,7 +17,17 @@ const LOCKED = "Protokols jau apstiprināts vai vēl nav gatavs.";
 async function editableField(fieldId: string) {
   const field = await prisma.protocolField.findUnique({
     where: { id: fieldId },
-    select: { id: true, sectionKey: true, protocol: { select: { status: true, recordingId: true } } },
+    select: {
+      id: true,
+      sectionKey: true,
+      protocol: {
+        select: {
+          status: true,
+          recordingId: true,
+          recording: { select: { plannedSide: true, document: { select: { text: true } } } },
+        },
+      },
+    },
   });
   if (!field) return { error: "Lauks nav atrasts." } as const;
   if (field.protocol.status !== "READY") return { error: LOCKED } as const;
@@ -53,15 +64,25 @@ export async function editField(input: { fieldId: string; value: string }): Prom
   if ("error" in found) return { ok: false, error: found.error ?? "Kļūda." };
 
   const value = parsed.data.value.trim();
+  // A typed value gets the same number and side check as a drafted one. With a
+  // warning it goes back to "to check", so approving it is a separate decision.
+  const { recording } = found.field.protocol;
+  const result = value ? checkManualValue(value, recording.document?.text ?? "", recording.plannedSide) : { check: "OK" as const, message: null };
   await prisma.protocolField.update({
     where: { id: found.field.id },
     // An emptied field is a person saying "not in this dictation".
-    data: { value: value || null, status: value ? "EDITED" : "REJECTED", editedById: session.userId },
+    data: {
+      value: value || null,
+      status: !value ? "REJECTED" : result.check === "OK" ? "EDITED" : "SUGGESTED",
+      check: result.check,
+      checkMessage: result.message,
+      editedById: session.userId,
+    },
   });
   await audit("PROTOCOL_FIELD_EDITED", {
     userId: session.userId,
     recordingId: found.field.protocol.recordingId,
-    details: { section: found.field.sectionKey },
+    details: { section: found.field.sectionKey, check: result.check },
   });
   revalidatePath(`/diktati/${found.field.protocol.recordingId}/protokols`);
   return { ok: true };

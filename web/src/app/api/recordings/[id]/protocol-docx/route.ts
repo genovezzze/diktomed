@@ -1,9 +1,11 @@
+import { isUuid } from "@/lib/safe-url";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sessionForApi } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { buildProtocolDocx } from "@/lib/docx";
 import { SIDE_LABELS } from "@/lib/labels";
+import { isDemoModel } from "@/lib/demo";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,7 @@ export const dynamic = "force-dynamic";
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   const session = await sessionForApi();
   if (!session) return NextResponse.json({ error: "Nepieciešama pieslēgšanās." }, { status: 401 });
+  if (!isUuid(params.id)) return NextResponse.json({ error: "Nav atrasts." }, { status: 404 });
 
   const recording = await prisma.recording.findUnique({
     where: { id: params.id },
@@ -20,6 +23,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       plannedSide: true,
       durationSec: true,
       createdAt: true,
+      modelName: true,
       protocol: {
         include: { approvedBy: { select: { name: true } }, fields: { orderBy: { position: "asc" } } },
       },
@@ -31,6 +35,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   }
 
   const buffer = await buildProtocolDocx({
+    demo: isDemoModel(recording.modelName),
     recordingTitle: recording.title,
     plannedSide: recording.plannedSide ? SIDE_LABELS[recording.plannedSide] : null,
     durationSec: recording.durationSec,

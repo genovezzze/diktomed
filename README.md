@@ -68,8 +68,9 @@ without real data.
    cp .env.example .env          # Windows PowerShell: copy .env.example .env
    ```
 3. Open `.env` and set `POSTGRES_PASSWORD`, `SESSION_SECRET` (32+ characters),
-   `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` (12+ characters) and
-   `ASR_BACKEND=fake`.
+   `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` (12+ characters),
+   `ASR_BACKEND=fake` and `DEMO_MODE=true` (demo text is fictional and is
+   marked as such; without DEMO_MODE it cannot be approved).
 4. `docker compose up -d --build` (the first build takes a few minutes).
 5. Open http://localhost:3000 and log in with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`.
    Add colleagues under **Lietotāji**: each gets a temporary password and must

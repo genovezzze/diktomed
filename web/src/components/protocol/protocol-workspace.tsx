@@ -19,6 +19,7 @@ import {
   isWarning,
   pendingFields,
 } from "@/lib/protocol";
+import { DEMO_BANNER } from "@/lib/demo";
 import {
   approveProtocol,
   decideField,
@@ -39,6 +40,7 @@ export type ProtocolFieldView = {
 };
 
 interface ProtocolWorkspaceProps {
+  demo: boolean;
   recordingId: string;
   recordingTitle: string;
   plannedSide: string | null;
@@ -122,6 +124,11 @@ export function ProtocolWorkspace(props: ProtocolWorkspaceProps) {
 
   return (
     <div className="space-y-4">
+      {props.demo && (
+        <div role="alert" className="rounded-2xl border-2 border-[#FF453A] bg-[#FF453A]/15 px-5 py-4 text-[15px] font-semibold text-[#D70015] dark:text-[#FF6961]">
+          {DEMO_BANNER}
+        </div>
+      )}
       <audio
         ref={audioRef}
         preload="none"

@@ -3,7 +3,7 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { createSession, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { passwordProblem } from "@/lib/password";
 
@@ -24,10 +24,13 @@ export async function changePassword(formData: FormData): Promise<ChangeResult> 
   const problem = passwordProblem(next);
   if (problem) return { ok: false, error: problem };
 
-  await prisma.user.update({
+  // A new password ends every other session; this browser gets a fresh one.
+  const updated = await prisma.user.update({
     where: { id: session.userId },
-    data: { passwordHash: await bcrypt.hash(next, 12), mustChangePassword: false },
+    data: { passwordHash: await bcrypt.hash(next, 12), mustChangePassword: false, sessionVersion: { increment: 1 } },
+    select: { sessionVersion: true },
   });
+  await createSession({ userId: session.userId, name: session.name, email: session.email, role: session.role, sv: updated.sessionVersion });
   await audit("PASSWORD_CHANGED", { userId: session.userId });
   return { ok: true };
 }

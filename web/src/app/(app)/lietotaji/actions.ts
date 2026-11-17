@@ -56,7 +56,7 @@ export async function resetPassword(input: { userId: string }): Promise<UserActi
   const password = temporaryPassword();
   await prisma.user.update({
     where: { id: parsed.data },
-    data: { passwordHash: await bcrypt.hash(password, 12), mustChangePassword: true },
+    data: { passwordHash: await bcrypt.hash(password, 12), mustChangePassword: true, sessionVersion: { increment: 1 } },
   });
   await audit("PASSWORD_RESET", { userId: admin.userId, details: { user: parsed.data } });
   revalidatePath("/lietotaji");
@@ -71,7 +71,10 @@ export async function setActive(input: { userId: string; active: boolean }): Pro
   if (!parsed.data.active && (await wouldRemoveLastAdmin(parsed.data.userId))) {
     return { ok: false, error: "Jāpaliek vismaz vienam aktīvam administratoram." };
   }
-  await prisma.user.update({ where: { id: parsed.data.userId }, data: { active: parsed.data.active } });
+  await prisma.user.update({
+    where: { id: parsed.data.userId },
+    data: { active: parsed.data.active, ...(parsed.data.active ? {} : { sessionVersion: { increment: 1 } }) },
+  });
   await audit(parsed.data.active ? "USER_ACTIVATED" : "USER_DEACTIVATED", { userId: admin.userId, details: { user: parsed.data.userId } });
   revalidatePath("/lietotaji");
   return { ok: true };

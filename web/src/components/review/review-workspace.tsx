@@ -7,6 +7,7 @@ import { CheckCircle2, ChevronRight, ClipboardList, Download, FileAudio, Pause, 
 import { cn } from "@/lib/utils";
 import { formatClock, formatDateTimeLV, formatPercent } from "@/lib/format";
 import { SIDE_LABELS } from "@/lib/labels";
+import { DEMO_BANNER, isDemoModel } from "@/lib/demo";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/recordings/status-badge";
 import { APPLE_CARD_LABEL, CHIP_GROUP, METRIC_SURFACE, TINT_TILE, chipClass } from "@/components/dashboard/apple";
@@ -226,6 +227,11 @@ export function ReviewWorkspace({ recording, segments, flags }: ReviewWorkspaceP
 
   return (
     <div className="space-y-4">
+      {isDemoModel(recording.modelName) && (
+        <div role="alert" className="rounded-2xl border-2 border-[#FF453A] bg-[#FF453A]/15 px-5 py-4 text-[15px] font-semibold text-[#D70015] dark:text-[#FF6961]">
+          {DEMO_BANNER}
+        </div>
+      )}
       {/* Header */}
       <section className={cn(METRIC_SURFACE, "p-5")}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

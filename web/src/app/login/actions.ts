@@ -5,7 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { clientIp, createSession } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { clearFailures, isRateLimited, recordFailure } from "@/lib/rate-limit";
+import { clearFailures, isRateLimited, recordFailures } from "@/lib/rate-limit";
 
 const schema = z.object({
   email: z.string().trim().toLowerCase().email(),
@@ -25,8 +25,11 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
   if (!parsed.success) return { ok: false, error: GENERIC_ERROR };
   const { email, password } = parsed.data;
 
-  const limitKey = `${clientIp() ?? "local"}:${email}`;
-  if (isRateLimited(limitKey)) {
+  // The account itself is limited whatever IP the request claims; behind a
+  // trusted proxy the client's IP is limited as well.
+  const ip = clientIp();
+  const limitKeys = [`account:${email}`, ...(ip ? [`ip:${ip}`] : [])];
+  if (limitKeys.some((k) => isRateLimited(k))) {
     return { ok: false, error: "Pārāk daudz mēģinājumu. Mēģiniet vēlreiz pēc 15 minūtēm." };
   }
 
@@ -34,13 +37,13 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
   const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
 
   if (!user || !user.active || !valid) {
-    recordFailure(limitKey);
+    recordFailures(limitKeys);
     await audit("LOGIN_FAILED", { userId: user?.id ?? null, details: { email } });
     return { ok: false, error: GENERIC_ERROR };
   }
 
-  clearFailures(limitKey);
-  await createSession({ userId: user.id, name: user.name, email: user.email, role: user.role });
+  clearFailures(`account:${email}`);
+  await createSession({ userId: user.id, name: user.name, email: user.email, role: user.role, sv: user.sessionVersion });
   await audit("LOGIN", { userId: user.id });
   return { ok: true, mustChangePassword: user.mustChangePassword };
 }

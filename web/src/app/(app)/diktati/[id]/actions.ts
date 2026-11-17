@@ -8,6 +8,7 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { extractCorrections } from "@/lib/text-diff";
 import { buildDocumentText } from "@/lib/document-text";
+import { demoApprovalAllowed, isDemoModel } from "@/lib/demo";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -158,10 +159,13 @@ export async function approveRecording(input: { recordingId: string }): Promise<
   const result = await prisma.$transaction(async (tx) => {
     const recording = await tx.recording.findUnique({
       where: { id: recordingId },
-      select: { status: true, segments: { select: { start: true, end: true, text: true } } },
+      select: { status: true, modelName: true, segments: { select: { start: true, end: true, text: true } } },
     });
     if (!recording) return { error: "Diktāts nav atrasts." };
     if (recording.status !== "READY") return { error: LOCKED };
+    if (isDemoModel(recording.modelName) && !demoApprovalAllowed()) {
+      return { error: "Šis teksts ir izdomāts (demo režīms, ASR_BACKEND=fake). To nevar apstiprināt kā dokumentu." };
+    }
 
     const high = await tx.flag.count({ where: { recordingId, status: "OPEN", severity: "HIGH" } });
     if (high > 0) return { error: `Vispirms pārbaudiet augsta riska vietas (${high}).` };

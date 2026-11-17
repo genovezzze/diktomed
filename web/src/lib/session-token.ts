@@ -14,6 +14,8 @@ export type SessionPayload = {
   name: string;
   email: string;
   role: Role;
+  /** users.session_version when the session was issued. */
+  sv: number;
 };
 
 const DEV_FALLBACK_SECRET = "dev-only-insecure-secret-change-me-please-min32chars";
@@ -49,7 +51,8 @@ export async function verifySession(token: string | undefined): Promise<SessionP
     ) {
       return null;
     }
-    return { userId: payload.userId, name: payload.name, email: payload.email, role: payload.role };
+    const sv = typeof payload.sv === "number" ? payload.sv : 0;
+    return { userId: payload.userId, name: payload.name, email: payload.email, role: payload.role, sv };
   } catch {
     return null;
   }
