@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySession } from "@/lib/session-token";
+import { browserUrl } from "@/lib/request-url";
 
 // Every page and API route needs a session, except the login page and the
 // health check. Pages and actions check roles again on the server.
-const PUBLIC_PATHS = ["/login", "/api/health"];
+const PUBLIC_PATHS = ["/login", "/api/health", "/api/auth/logout"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -17,9 +18,8 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "Nepieciešama pieslēgšanās." }, { status: 401 });
   }
-  const login = new URL("/login", request.url);
-  if (pathname !== "/") login.searchParams.set("next", pathname);
-  return NextResponse.redirect(login);
+  const target = pathname === "/" ? "/login" : `/login?next=${encodeURIComponent(pathname)}`;
+  return NextResponse.redirect(browserUrl(target, request.headers, request.url));
 }
 
 export const config = {
