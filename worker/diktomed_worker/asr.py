@@ -67,6 +67,25 @@ class Transcriber(Protocol):
     def transcribe(self, path: Path, initial_prompt: str | None, on_progress: ProgressCallback | None = None) -> Transcript: ...
 
 
+def read_wav_float32(path: Path):
+    """The normalised 16 kHz mono PCM WAV as float32 samples in [-1, 1].
+
+    Handing faster-whisper the samples instead of a file path keeps it from
+    decoding audio itself through PyAV, whose API changes between releases
+    (PyAV 15+ dropped an argument faster-whisper passes). ffmpeg has already
+    produced exactly the format the model wants.
+    """
+    import wave
+
+    import numpy as np  # noqa: PLC0415 - comes with faster-whisper
+
+    with wave.open(str(path), "rb") as w:
+        if w.getsampwidth() != 2 or w.getnchannels() != 1:
+            raise ValueError("expected 16-bit mono PCM WAV")
+        frames = w.readframes(w.getnframes())
+    return np.frombuffer(frames, dtype=np.int16).astype(np.float32) / 32768.0
+
+
 class FasterWhisperTranscriber:
     """Whisper through CTranslate2. Point ASR_MODEL at a converted model folder,
     e.g. the AiLab (LU MII) Latvian fine-tune converted with
@@ -88,7 +107,7 @@ class FasterWhisperTranscriber:
 
     def transcribe(self, path: Path, initial_prompt: str | None, on_progress: ProgressCallback | None = None) -> Transcript:
         segments_iter, info = self._model.transcribe(
-            str(path),
+            read_wav_float32(path),
             language=self.language,
             beam_size=self.beam_size,
             word_timestamps=True,
