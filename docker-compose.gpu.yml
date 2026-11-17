@@ -1,0 +1,13 @@
+# NVIDIA GPU for the worker (needs the NVIDIA Container Toolkit on the host).
+services:
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile.gpu
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

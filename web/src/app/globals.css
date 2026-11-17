@@ -1,0 +1,357 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Albert Sans - the application's interface face (same as the Shadowy
+   platform). Served from /public so it works on a server with no internet. */
+@font-face {
+  font-family: "Albert Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/albert-sans-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Albert Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/albert-sans-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --font-app: "Albert Sans";
+
+    --background: 220 20% 97%;
+    --foreground: 210 24% 16%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 24% 16%;
+
+    --muted: 210 20% 95%;
+    --muted-foreground: 221 13% 46%;
+
+    --primary: 210 24% 16%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 20% 95%;
+    --secondary-foreground: 210 24% 16%;
+
+    --accent: 210 18% 92%;
+    --accent-foreground: 210 24% 16%;
+
+    --destructive: 0 58% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 163 75% 36%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 80% 50%;
+    --warning-foreground: 0 0% 0%;
+
+    --border: 213 16% 87%;
+    --input: 213 16% 85%;
+    --ring: 210 24% 16%;
+
+    --sidebar: 210 21% 95%;
+    --sidebar-foreground: 210 24% 16%;
+    --sidebar-accent: 210 18% 91%;
+    --sidebar-border: 213 16% 87%;
+
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    /* #171719: one graphite for the page, the sidebar and the top bar. */
+    --background: 240 4% 9.4%;
+    --foreground: 0 0% 96%;
+
+    --card: 240 3% 14%;
+    --card-foreground: 0 0% 96%;
+
+    --muted: 240 3% 18%;
+    --muted-foreground: 240 4% 62%;
+
+    --primary: 160 70% 22%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 3% 18%;
+    --secondary-foreground: 0 0% 96%;
+
+    --accent: 240 3% 19%;
+    --accent-foreground: 0 0% 96%;
+
+    --destructive: 0 63% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 0%;
+
+    --border: 240 3% 19%;
+    --input: 240 3% 21%;
+    --ring: 160 84% 39%;
+
+    --sidebar: 240 4% 9.4%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-accent: 240 3% 17%;
+    --sidebar-border: 240 3% 16%;
+  }
+
+  .slate {
+    color-scheme: dark;
+
+    --background: 222 24% 11%;
+    --foreground: 210 40% 94%;
+
+    --card: 222 22% 15%;
+    --card-foreground: 210 40% 94%;
+
+    --muted: 217 20% 20%;
+    --muted-foreground: 215 14% 62%;
+
+    --primary: 160 70% 22%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 20% 20%;
+    --secondary-foreground: 210 40% 94%;
+
+    --accent: 217 24% 23%;
+    --accent-foreground: 210 40% 94%;
+
+    --destructive: 0 63% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 160 84% 39%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 0%;
+
+    --border: 213 18% 21%;
+    --input: 213 18% 23%;
+    --ring: 160 84% 39%;
+
+    --sidebar: 222 28% 13%;
+    --sidebar-foreground: 210 40% 94%;
+    --sidebar-accent: 217 24% 21%;
+    --sidebar-border: 213 18% 19%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  html,
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    max-width: 100%;
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply rounded-full bg-white/[0.08]; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-white/[0.14]; }
+
+  .app-shell ::-webkit-scrollbar-thumb { @apply bg-black/10 dark:bg-white/[0.08]; }
+  .app-shell ::-webkit-scrollbar-thumb:hover { @apply bg-black/20 dark:bg-white/[0.14]; }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+.font-display {
+  letter-spacing: 0.01em !important;
+}
+
+/* Readability inside the authenticated application only (as in Shadowy). */
+.app-shell {
+  letter-spacing: 0;
+}
+
+.app-shell .text-xs {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.app-shell .text-sm {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.auth-field:-webkit-autofill,
+.auth-field:-webkit-autofill:hover,
+.auth-field:-webkit-autofill:focus,
+.auth-field:-webkit-autofill:active {
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.92) !important;
+  caret-color: white;
+  box-shadow: 0 0 0 1000px #000 inset !important;
+  -webkit-box-shadow: 0 0 0 1000px #000 inset !important;
+  transition: background-color 9999s ease-out 0s;
+}
+
+/* Sidebar icons: a short pop on hover, like the Shadowy rail. */
+@keyframes nav-part-pop { 0%,100% { transform: scale(1) } 45% { transform: scale(.82) } 72% { transform: scale(1.08) } }
+.sidebar-nav-link:hover .sidebar-nav-icon { animation: nav-part-pop 480ms cubic-bezier(.22,1,.36,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-nav-link:hover .sidebar-nav-icon { animation: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   The Shadowy platform's "new design": white tiles with a hairline, pill
+   buttons in Apple blue, soft rounded fields, tinted badges. Primitives carry
+   data-slot hooks; these rules use !important so they win over the
+   primitives' own utilities.
+   --------------------------------------------------------------------------- */
+
+.ui-new [data-slot="card"] {
+  border-radius: 1rem !important;
+  border: 1px solid rgba(0, 0, 0, 0.07) !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+:is(.dark, .slate) .ui-new [data-slot="card"],
+html:is(.dark, .slate).ui-new [data-slot="card"] {
+  border-color: rgba(255, 255, 255, 0.07) !important;
+  background: hsl(var(--card)) !important;
+}
+.ui-new [data-slot="card-title"] {
+  font-family: var(--font-display), var(--font-app), sans-serif;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.ui-new [data-slot="page-header"] {
+  border-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+.ui-new [data-slot="page-title"] {
+  font-family: var(--font-display), var(--font-app), sans-serif;
+  font-weight: 500;
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.ui-new [data-slot="button"] {
+  border-radius: 9999px !important;
+  font-weight: 500 !important;
+}
+.ui-new [data-slot="button"]:is([data-variant="default"], [data-variant="solid"]) {
+  border: 0 !important;
+  background: #007aff !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+.ui-new [data-slot="button"]:is([data-variant="default"], [data-variant="solid"]):hover {
+  background: #0062cc !important;
+}
+:is(.dark, .slate) .ui-new [data-slot="button"]:is([data-variant="default"], [data-variant="solid"]),
+html:is(.dark, .slate).ui-new [data-slot="button"]:is([data-variant="default"], [data-variant="solid"]) {
+  background: #0a84ff !important;
+}
+:is(.dark, .slate) .ui-new [data-slot="button"]:is([data-variant="default"], [data-variant="solid"]):hover,
+html:is(.dark, .slate).ui-new [data-slot="button"]:is([data-variant="default"], [data-variant="solid"]):hover {
+  background: #0a74e0 !important;
+}
+.ui-new [data-slot="button"][data-variant="outline"] {
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+.ui-new [data-slot="button"][data-variant="outline"]:hover {
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+:is(.dark, .slate) .ui-new [data-slot="button"][data-variant="outline"],
+html:is(.dark, .slate).ui-new [data-slot="button"][data-variant="outline"] {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+:is(.dark, .slate) .ui-new [data-slot="button"][data-variant="outline"]:hover,
+html:is(.dark, .slate).ui-new [data-slot="button"][data-variant="outline"]:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+.ui-new [data-slot="button"][data-variant="secondary"] {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+:is(.dark, .slate) .ui-new [data-slot="button"][data-variant="secondary"],
+html:is(.dark, .slate).ui-new [data-slot="button"][data-variant="secondary"] {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.ui-new [data-slot="field"] {
+  border-radius: 0.75rem !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  background-color: rgba(0, 0, 0, 0.02) !important;
+  box-shadow: none !important;
+}
+:is(.dark, .slate) .ui-new [data-slot="field"],
+html:is(.dark, .slate).ui-new [data-slot="field"] {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+.ui-new [data-slot="field"]:focus-visible {
+  border-color: rgba(0, 122, 255, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.18) !important;
+  outline: none !important;
+}
+
+.ui-new [data-slot="badge"] {
+  border-color: transparent !important;
+  font-weight: 500;
+}
+.ui-new [data-slot="badge"][data-variant="default"] { background: rgba(0, 122, 255, 0.12) !important; color: #007aff !important; }
+.ui-new [data-slot="badge"][data-variant="success"] { background: rgba(52, 199, 89, 0.14) !important; color: #248a3d !important; }
+.ui-new [data-slot="badge"][data-variant="warning"] { background: rgba(255, 149, 0, 0.14) !important; color: #c93400 !important; }
+.ui-new [data-slot="badge"][data-variant="destructive"] { background: rgba(255, 59, 48, 0.12) !important; color: #d70015 !important; }
+:is(.dark, .slate) .ui-new [data-slot="badge"][data-variant="default"],
+html:is(.dark, .slate).ui-new [data-slot="badge"][data-variant="default"] { color: #0a84ff !important; }
+:is(.dark, .slate) .ui-new [data-slot="badge"][data-variant="success"],
+html:is(.dark, .slate).ui-new [data-slot="badge"][data-variant="success"] { color: #30d158 !important; }
+:is(.dark, .slate) .ui-new [data-slot="badge"][data-variant="warning"],
+html:is(.dark, .slate).ui-new [data-slot="badge"][data-variant="warning"] { color: #ff9f0a !important; }
+:is(.dark, .slate) .ui-new [data-slot="badge"][data-variant="destructive"],
+html:is(.dark, .slate).ui-new [data-slot="badge"][data-variant="destructive"] { color: #ff453a !important; }
+
+.ui-new [data-slot="empty-state"] {
+  border-radius: 1rem !important;
+  border-style: solid !important;
+  border-color: rgba(0, 0, 0, 0.07) !important;
+  background: #fff !important;
+}
+:is(.dark, .slate) .ui-new [data-slot="empty-state"],
+html:is(.dark, .slate).ui-new [data-slot="empty-state"] {
+  border-color: rgba(255, 255, 255, 0.07) !important;
+  background: hsl(var(--card)) !important;
+}
+
+/* Review screen: the word under the playhead. */
+.word-current {
+  background: rgba(10, 132, 255, 0.22);
+  border-radius: 4px;
+}
+
+/* Range sliders in the transcript toolbar, tinted Apple blue. */
+input[type="range"].apple-range {
+  accent-color: #0a84ff;
+}

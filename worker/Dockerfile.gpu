@@ -1,0 +1,19 @@
+# NVIDIA GPU image: CUDA 12 + cuDNN 9, as CTranslate2 4.x expects.
+FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends python3 python3-pip ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+COPY diktomed_worker ./diktomed_worker
+COPY training ./training
+
+RUN useradd --system --uid 10001 worker && mkdir -p /data /models && chown worker /data
+USER worker
+
+ENV PYTHONUNBUFFERED=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+CMD ["python3", "-m", "diktomed_worker"]

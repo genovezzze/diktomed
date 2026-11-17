@@ -1,0 +1,9 @@
+# Only for fine-tuning on the hospital's GPU server (see training/README.md).
+psycopg[binary]>=3.2,<4
+torch>=2.3
+transformers>=4.44
+accelerate>=0.33
+peft>=0.12
+soundfile>=0.12
+ctranslate2>=4.4
+faster-whisper>=1.1,<2

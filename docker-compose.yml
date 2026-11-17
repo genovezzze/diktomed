@@ -1,0 +1,85 @@
+# DiktoMed on one hospital server.
+#   cp .env.example .env   # fill in the secrets
+#   docker compose up -d --build
+# GPU: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+name: diktomed
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: diktomed
+      POSTGRES_USER: diktomed
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U diktomed -d diktomed"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    build: { context: ./web, target: migrate }
+    environment:
+      DATABASE_URL: postgresql://diktomed:${POSTGRES_PASSWORD}@db:5432/diktomed
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:?set SEED_ADMIN_EMAIL in .env}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?set SEED_ADMIN_PASSWORD in .env}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Administrators}
+    networks: [backend]
+    depends_on:
+      db: { condition: service_healthy }
+    restart: "no"
+
+  web:
+    build: { context: ./web, target: runner }
+    environment:
+      DATABASE_URL: postgresql://diktomed:${POSTGRES_PASSWORD}@db:5432/diktomed
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET in .env (32+ characters)}
+      STORAGE_DIR: /data
+      ORG_NAME: ${ORG_NAME:-Slimnīca}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-300}
+      CORRECTION_MIN_COUNT: ${CORRECTION_MIN_COUNT:-2}
+    volumes:
+      - audio:/data
+    ports:
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-3000}:3000"
+    networks: [backend, frontend]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  worker:
+    build: ./worker
+    environment:
+      DATABASE_URL: postgresql://diktomed:${POSTGRES_PASSWORD}@db:5432/diktomed
+      STORAGE_DIR: /data
+      ASR_BACKEND: ${ASR_BACKEND:-faster-whisper}
+      ASR_MODEL: ${ASR_MODEL:-/models/whisper-lv-ct2}
+      ASR_DEVICE: ${ASR_DEVICE:-auto}
+      ASR_COMPUTE_TYPE: ${ASR_COMPUTE_TYPE:-auto}
+      ASR_LANGUAGE: ${ASR_LANGUAGE:-lv}
+      AUDIO_DENOISE: ${AUDIO_DENOISE:-false}
+      CORRECTION_MIN_COUNT: ${CORRECTION_MIN_COUNT:-2}
+      RETENTION_DAYS: ${RETENTION_DAYS:-0}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+    volumes:
+      - audio:/data
+      - ./models:/models:ro
+    # backend is an internal network: the worker cannot reach the internet.
+    networks: [backend]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+networks:
+  backend:
+    internal: true
+  frontend: {}
+
+volumes:
+  pgdata:
+  audio:

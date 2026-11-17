@@ -1,0 +1,4 @@
+# Runtime dependencies of the worker. faster-whisper runs the recogniser
+# locally (CTranslate2); nothing here calls an external API.
+psycopg[binary]>=3.2,<4
+faster-whisper>=1.1,<2
