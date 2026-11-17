@@ -50,19 +50,33 @@ or if it is unreachable, keyword rules draft them (`PROTOCOL_BACKEND=rules`).
 | `worker/` | Python; recognition, flags, retention | `worker/diktomed_worker` |
 | `worker/training/` | dataset export, evaluation, fine-tuning | see `worker/training/README.md` |
 | `docker-compose.yml` | db, migrate, web, worker; the worker has no internet | |
+| `docs/IT-apraksts.md` | one-page technical description for the hospital's IT (Latvian) | |
 
 ## Run it
 
-### Demo without a GPU or a model
+### On your own computer (Windows, macOS or Linux), demo mode
 
-`ASR_BACKEND=fake` produces a fixed, fictional knee-arthroscopy dictation for any
-uploaded audio, so the whole flow can be shown without real data.
+No GPU and no model needed: `ASR_BACKEND=fake` turns any uploaded audio into
+the same fictional knee-arthroscopy dictation, so the whole flow can be shown
+without real data.
 
-```bash
-cp .env.example .env    # set the secrets, and ASR_BACKEND=fake
-docker compose up -d --build
-# http://localhost:3000, log in with SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD
-```
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and Git.
+2. In a terminal:
+   ```bash
+   git clone https://github.com/genovezzze/diktomed
+   cd diktomed
+   cp .env.example .env          # Windows PowerShell: copy .env.example .env
+   ```
+3. Open `.env` and set `POSTGRES_PASSWORD`, `SESSION_SECRET` (32+ characters),
+   `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD` (12+ characters) and
+   `ASR_BACKEND=fake`.
+4. `docker compose up -d --build` (the first build takes a few minutes).
+5. Open http://localhost:3000 and log in with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`.
+   Add colleagues under **Lietotāji**: each gets a temporary password and must
+   choose their own at first login.
+
+Stop with `docker compose down`; `docker compose down -v` also deletes the
+data.
 
 ### Real recognition
 
@@ -116,7 +130,9 @@ backups of the `pgdata` and `audio` volumes, and a penetration test.
 - Operation classification codes: candidates from the official list, chosen by a person.
 - An admin screen for the protocol sections (today: the `protocol_sections` table).
 - Watching an input folder for dictaphone docking stations.
-- SSO with the hospital directory instead of local accounts.
+- Login with the hospital's Active Directory instead of local accounts.
+- TLS reverse proxy (Caddy/nginx) in the compose file for the hospital certificate.
+- Offline installation bundle (images + model) with an install and an update script.
 
 ## Fonts
 

@@ -130,12 +130,12 @@ export function Sidebar({
         <div aria-hidden className={divider} />
         {rail ? (
           <div className="flex flex-col gap-1 px-3.5 py-3">
-            <div className={cn(railRow, showLabel ? "w-full" : "w-10")} title={`${userName} · ${roleLabel}`}>
+            <Link href="/parole" className={cn(railRow, showLabel ? "w-full" : "w-10")} title={`${userName} · ${roleLabel} · Mainīt paroli`}>
               <span className={railBox}>
                 <UserCircle className="h-[18px] w-[18px]" />
               </span>
               {showLabel && <span className={cn(railLabel, "text-foreground")}>{userName}</span>}
-            </div>
+            </Link>
             <div className={cn(railRow, "[&_button]:!bg-transparent", showLabel ? "w-full" : "w-10")}>
               <span className={railBox}>
                 <ThemeToggle />
@@ -156,10 +156,10 @@ export function Sidebar({
               <div className="mt-1 truncate text-[15px] font-medium">{organizationName}</div>
             </div>
             <div className="flex items-center justify-between gap-2">
-              <div className="-mx-1 min-w-0 px-2 py-1.5">
+              <Link href="/parole" title="Mainīt paroli" className="-mx-1 min-w-0 rounded-lg px-2 py-1.5 transition-colors hover:bg-sidebar-accent dark:hover:bg-white/[0.06]">
                 <div className="truncate text-[15px]">{userName}</div>
                 <div className="text-[13px] text-muted-foreground">{roleLabel}</div>
-              </div>
+              </Link>
               <div className="flex items-center gap-1">
                 <ThemeToggle />
                 <a

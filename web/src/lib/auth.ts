@@ -29,22 +29,29 @@ export function clearSession() {
   cookies().delete(SESSION_COOKIE);
 }
 
-export async function getSession(): Promise<SessionPayload | null> {
+export type CurrentUser = SessionPayload & { mustChangePassword: boolean };
+
+export async function getSession(): Promise<CurrentUser | null> {
   const session = await verifySession(cookies().get(SESSION_COOKIE)?.value);
   if (!session) return null;
   // A deactivated account loses access at once, not when its cookie expires.
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { active: true, role: true, name: true },
+    select: { active: true, role: true, name: true, mustChangePassword: true },
   });
   if (!user || !user.active) return null;
-  return { ...session, role: user.role, name: user.name };
+  return { ...session, role: user.role, name: user.name, mustChangePassword: user.mustChangePassword };
 }
 
-/** For pages and server actions: the signed-in user, or a redirect to the login page. */
-export async function requireUser(roles?: Role[]): Promise<SessionPayload> {
+/**
+ * For pages and server actions: the signed-in user, or a redirect to the login
+ * page. Someone still on a temporary password is sent to /parole first; only
+ * that page passes allowTemporaryPassword.
+ */
+export async function requireUser(roles?: Role[], opts: { allowTemporaryPassword?: boolean } = {}): Promise<CurrentUser> {
   const session = await getSession();
   if (!session) redirect("/login");
+  if (session.mustChangePassword && !opts.allowTemporaryPassword) redirect("/parole");
   if (roles && !roles.includes(session.role)) redirect("/");
   return session;
 }
@@ -52,7 +59,7 @@ export async function requireUser(roles?: Role[]): Promise<SessionPayload> {
 /** For route handlers: the signed-in user or null (the caller answers 401). */
 export async function sessionForApi(roles?: Role[]): Promise<SessionPayload | null> {
   const session = await getSession();
-  if (!session) return null;
+  if (!session || session.mustChangePassword) return null;
   if (roles && !roles.includes(session.role)) return null;
   return session;
 }

@@ -12,8 +12,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY diktomed_worker ./diktomed_worker
 COPY training ./training
 
-RUN useradd --system --uid 10001 worker && mkdir -p /data /models && chown worker /data
-USER worker
+# Same UID as the web container's "node" user (1000): both read and write the
+# shared audio volume, and the web app creates directories the worker must open.
+RUN (getent passwd 1000 >/dev/null || useradd --uid 1000 --user-group --no-create-home --shell /usr/sbin/nologin diktomed) \
+ && mkdir -p /data /models && chown 1000:1000 /data
+USER 1000
 
 # Never reach the internet for models: they are mounted at /models.
 ENV PYTHONUNBUFFERED=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1

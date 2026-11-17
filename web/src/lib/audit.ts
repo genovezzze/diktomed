@@ -30,7 +30,13 @@ export type AuditAction =
   | "PROTOCOL_FIELD_REJECTED"
   | "PROTOCOL_FIELD_EDITED"
   | "PROTOCOL_APPROVED"
-  | "PROTOCOL_DOCX_EXPORTED";
+  | "PROTOCOL_DOCX_EXPORTED"
+  | "USER_CREATED"
+  | "USER_DEACTIVATED"
+  | "USER_ACTIVATED"
+  | "USER_ROLE_CHANGED"
+  | "PASSWORD_RESET"
+  | "PASSWORD_CHANGED";
 
 export async function audit(
   action: AuditAction,

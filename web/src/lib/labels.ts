@@ -65,4 +65,10 @@ export const AUDIT_LABELS: Record<string, string> = {
   PROTOCOL_FIELD_EDITED: "Laboja protokola lauku",
   PROTOCOL_APPROVED: "Apstiprināja protokolu",
   PROTOCOL_DOCX_EXPORTED: "Lejupielādēja protokolu DOCX",
+  USER_CREATED: "Izveidoja lietotāju",
+  USER_DEACTIVATED: "Atslēdza lietotāju",
+  USER_ACTIVATED: "Ieslēdza lietotāju",
+  USER_ROLE_CHANGED: "Mainīja lietotāja lomu",
+  PASSWORD_RESET: "Izsniedza pagaidu paroli",
+  PASSWORD_CHANGED: "Nomainīja paroli",
 };

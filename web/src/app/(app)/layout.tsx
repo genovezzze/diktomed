@@ -1,9 +1,11 @@
+import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { NewDesignScope } from "@/components/layout/new-design-scope";
 import { ROLE_LABELS, requireUser } from "@/lib/auth";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await requireUser();
+  if (session.mustChangePassword) redirect("/parole");
   return (
     <AppShell
       role={session.role}

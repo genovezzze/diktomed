@@ -30,7 +30,7 @@ export function LoginForm() {
           setError(res.error);
           return;
         }
-        router.push(nextPath);
+        router.push(res.mustChangePassword ? "/parole" : nextPath);
         router.refresh();
       } catch {
         setError("Pieslēgšanās īslaicīgi nav pieejama. Mēģiniet vēlreiz pēc brīža.");

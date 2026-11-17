@@ -16,7 +16,7 @@ const schema = z.object({
 // time either way and does not reveal which accounts exist.
 const DUMMY_HASH = bcrypt.hashSync("diktomed-timing-equaliser", 10);
 
-export type LoginResult = { ok: true } | { ok: false; error: string };
+export type LoginResult = { ok: true; mustChangePassword: boolean } | { ok: false; error: string };
 
 const GENERIC_ERROR = "Nepareizs e-pasts vai parole.";
 
@@ -42,5 +42,5 @@ export async function loginAction(formData: FormData): Promise<LoginResult> {
   clearFailures(limitKey);
   await createSession({ userId: user.id, name: user.name, email: user.email, role: user.role });
   await audit("LOGIN", { userId: user.id });
-  return { ok: true };
+  return { ok: true, mustChangePassword: user.mustChangePassword };
 }

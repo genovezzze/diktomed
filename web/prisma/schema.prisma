@@ -89,13 +89,16 @@ enum JobStatus {
 }
 
 model User {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email        String   @unique
-  name         String
-  passwordHash String   @map("password_hash")
-  role         Role     @default(TRANSCRIBER)
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email              String   @unique
+  name               String
+  passwordHash       String   @map("password_hash")
+  role               Role     @default(TRANSCRIBER)
+  active             Boolean  @default(true)
+  /// Set when an administrator issues a temporary password; the user must
+  /// choose their own before using the app. Added in migration 0003.
+  mustChangePassword Boolean  @default(false) @map("must_change_password")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   uploads   Recording[] @relation("uploadedBy")
   approvals Recording[] @relation("approvedBy")

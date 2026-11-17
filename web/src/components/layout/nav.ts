@@ -1,4 +1,4 @@
-import { AudioLines, BarChart2, BookOpen, LayoutDashboard, ShieldCheck, type LucideIcon } from "lucide-react";
+import { AudioLines, BarChart2, BookOpen, LayoutDashboard, ShieldCheck, Users, type LucideIcon } from "lucide-react";
 import type { Role } from "@/lib/session-token";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; roles?: Role[] };
@@ -8,6 +8,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/diktati", label: "Diktāti", icon: AudioLines },
   { href: "/vardnica", label: "Vārdnīca", icon: BookOpen },
   { href: "/kvalitate", label: "Kvalitāte", icon: BarChart2 },
+  { href: "/lietotaji", label: "Lietotāji", icon: Users, roles: ["ADMIN"] },
   { href: "/audits", label: "Audits", icon: ShieldCheck, roles: ["ADMIN"] },
 ];
 
