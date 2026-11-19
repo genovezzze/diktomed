@@ -17,7 +17,7 @@ pārbauda un apstiprina cilvēks. Rezultāts tiek lejupielādēts DOCX formātā
 Darba datori (pārlūks)  --HTTPS-->  Slimnīcas serveris
                                     ├─ web     (Next.js, pieslēgšanās, saskarne)
                                     ├─ db      (PostgreSQL)
-                                    ├─ worker  (runas atpazīšana, GPU)
+                                    ├─ worker  (runas atpazīšana, CPU vai GPU)
                                     └─ [pēc izvēles] lokāls valodas modelis
 ```
 
@@ -33,13 +33,15 @@ Darba datori (pārlūks)  --HTTPS-->  Slimnīcas serveris
 
 | | Minimums | Ieteicams |
 |---|---|---|
-| OS | Linux (Ubuntu 22.04/24.04) ar Docker | tas pats, var būt virtuālā mašīna ar GPU |
-| CPU / RAM | 8 kodoli / 32 GB | 16 kodoli / 64 GB |
-| GPU | NVIDIA ar 12 GB atmiņu | NVIDIA ar 24 GB (ja izmanto arī valodas modeli protokolam) |
-| Disks | 250 GB SSD, šifrēts | 500 GB SSD, šifrēts |
+| OS | Linux (Ubuntu 22.04/24.04) ar Docker | tas pats, var būt virtuālā mašīna |
+| CPU / RAM | 8 kodoli / 16 GB | 16 kodoli / 32 GB |
+| GPU | nav obligāts | NVIDIA ar 8+ GB atmiņu (ar valodas modeli protokolam: 24 GB) |
+| Disks | 200 GB SSD, šifrēts | 500 GB SSD, šifrēts |
 | Tīkls | piekļuve no darba datoriem pa 443 | izejošs internets nav vajadzīgs |
 
-Bez GPU sistēma darbojas arī uz CPU, bet atpazīšana ir vairākas reizes lēnāka.
+Bez GPU sistēma darbojas uz CPU; atpazīšana ir vairākas reizes lēnāka, bet
+diktofonu centram tas parasti ir pietiekami. Ar GPU diktāts tiek atpazīts
+daudz ātrāk nekā tā ilgums.
 Audio apjoms: aptuveni 1–5 MB uz diktāta minūti.
 
 ## Datu aizsardzība
@@ -65,7 +67,7 @@ Audio apjoms: aptuveni 1–5 MB uz diktāta minūti.
 1. Diktofonu modelis un ierakstu formāts (DSS, DS2, WAV, MP3), vai ieraksti ir šifrēti.
 2. Pašreizējais ierakstu ceļš līdz diktofonu centram un glabāšanas vieta.
 3. Apjoms: diktātu skaits dienā, vidējais ilgums, darbinieku skaits.
-4. Serveris vai virtuālā mašīna ar GPU pilotam, Docker atļauja.
+4. Serveris vai virtuālā mašīna pilotam (GPU nav obligāts), Docker atļauja.
 5. Iekšējais DNS ieraksts un HTTPS sertifikāts (slimnīcas sertifikātu centrs).
 6. Active Directory pieslēgšanās iespēja (pēc pilota sākuma).
 7. Datu aizsardzības speciālista kontakts DPIA saskaņošanai.
@@ -73,7 +75,8 @@ Audio apjoms: aptuveni 1–5 MB uz diktāta minūti.
 
 ## Pilota plāns
 
-1. Uzstādīšana slimnīcas serverī kopā ar IT nodaļu (viena darba diena).
+1. Uzstādīšana slimnīcas serverī kopā ar IT nodaļu (viena darba diena;
+   soli pa solim: `IT-uzstadisana.md`).
 2. 2–4 nedēļas darbs ar reāliem diktātiem diktofonu centrā.
 3. Mērījumi: cik % melnraksta vārdu jālabo, cik laika aizņem viens diktāts
    salīdzinājumā ar pārrakstīšanu no nulles.
