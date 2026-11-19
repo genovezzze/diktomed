@@ -57,7 +57,7 @@ def process_job(conn: psycopg.Connection, settings: Settings, transcriber: Trans
     db.set_processing(conn, recording.id)
     directory = recording_dir(settings, recording.storage_key)
     normalized = directory / NORMALIZED
-    normalize(find_original(directory), normalized, denoise=settings.audio_denoise)
+    normalize(find_original(directory), normalized, enhance=settings.audio_enhance)
 
     corrections = db.load_corrections(conn, settings.correction_min_count)
     prompt = build_initial_prompt(db.load_terms(conn), [c.right for c in corrections[:30]])

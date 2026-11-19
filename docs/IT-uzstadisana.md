@@ -148,6 +148,7 @@ Pēc izmaiņām: `docker compose up -d --no-build`.
 | `RETENTION_DAYS` | pēc cik dienām dzēst audio pēc apstiprināšanas (0 = nedzēst). Saskaņot ar datu aizsardzības speciālistu |
 | `MAX_UPLOAD_MB` | lielākais augšupielādes fails (300) |
 | `ASR_DEVICE` | `auto`, `cuda` vai `cpu` |
+| `AUDIO_ENHANCE` | audio uzlabošana pirms atpazīšanas: `off`, `denoise` (vienmērīgs fona troksnis) vai `voice` (neskaidra, "dobja" diktofona skaņa). Iestata kopā ar izstrādātājiem pēc salīdzinājuma |
 | `LLM_BASE_URL`, `LLM_MODEL` | pēc izvēles: lokāls valodas modelis slimnīcas tīklā protokola sagatavošanai |
 | `DEMO_MODE` | vienmēr `false` |
 

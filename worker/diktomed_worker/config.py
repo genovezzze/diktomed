@@ -38,7 +38,7 @@ class Settings:
     asr_compute_type: str  # "auto", "int8", "int8_float16", "float16", ...
     asr_language: str | None  # "lv"; None lets the model detect it
     asr_beam_size: int
-    audio_denoise: bool
+    audio_enhance: str  # a key of audio.ENHANCE_PRESETS
     line_threshold: float
     word_threshold: float
     correction_min_count: int
@@ -49,6 +49,18 @@ class Settings:
     llm_model: str | None
     llm_timeout: float
     protocol_backend: str  # "llm" or "rules"
+
+
+def _enhance(env: dict[str, str]) -> str:
+    from .audio import ENHANCE_PRESETS  # noqa: PLC0415
+
+    value = (env.get("AUDIO_ENHANCE") or "").strip().lower()
+    if not value:
+        # AUDIO_DENOISE=true from older .env files keeps working.
+        value = "denoise" if (env.get("AUDIO_DENOISE") or "").lower() in ("1", "true", "yes") else "off"
+    if value not in ENHANCE_PRESETS:
+        raise SystemExit(f"AUDIO_ENHANCE must be one of {', '.join(ENHANCE_PRESETS)}")
+    return value
 
 
 def load_settings(env: dict[str, str] | None = None) -> Settings:
@@ -67,7 +79,7 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         asr_compute_type=(env.get("ASR_COMPUTE_TYPE") or "auto").strip().lower(),
         asr_language=None if language in ("", "auto") else language,
         asr_beam_size=_int(env, "ASR_BEAM_SIZE", 5),
-        audio_denoise=(env.get("AUDIO_DENOISE") or "").lower() in ("1", "true", "yes"),
+        audio_enhance=_enhance(env),
         line_threshold=_float(env, "LINE_THRESHOLD", 0.7),
         word_threshold=_float(env, "WORD_THRESHOLD", 0.5),
         correction_min_count=_int(env, "CORRECTION_MIN_COUNT", 2),
