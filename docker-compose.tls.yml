@@ -1,0 +1,21 @@
+# HTTPS for the hospital network with the hospital's own certificate.
+# Put certs/cert.pem (with the chain) and certs/key.pem next to this file and
+# set DIKTOMED_HOST in .env. The web app itself stays on 127.0.0.1.
+services:
+  proxy:
+    image: caddy:2.8.4-alpine
+    environment:
+      DIKTOMED_HOST: ${DIKTOMED_HOST:?set DIKTOMED_HOST in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/certs:ro
+      - caddy_data:/data
+    ports:
+      - "${HTTPS_BIND:-0.0.0.0}:443:443"
+      - "${HTTPS_BIND:-0.0.0.0}:80:80"
+    networks: [frontend]
+    depends_on: [web]
+    restart: unless-stopped
+
+volumes:
+  caddy_data:

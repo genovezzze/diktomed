@@ -83,8 +83,28 @@ data.
 
 1. On a machine with internet: `./worker/scripts/download_model.sh` (or `int8` for CPU).
    It converts the AiLab (LU MII) Latvian Whisper large-v3 to `./models/whisper-lv-ct2`.
-2. Copy the project with `./models` to the hospital server.
-3. `docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build`
+2. `docker compose up -d --build`, or with an NVIDIA GPU
+   `docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build`.
+
+### On the hospital server: offline bundle
+
+The hospital gets one archive with prebuilt images, the model and scripts; the
+server needs no internet. The step-by-step guide for the hospital's IT, in
+Latvian, is [`docs/IT-uzstadisana.md`](docs/IT-uzstadisana.md).
+
+```bash
+deploy/make-bundle.sh              # dist/diktomed-<version>.tar (CPU worker, with the model)
+deploy/make-bundle.sh --gpu        # NVIDIA worker
+deploy/make-bundle.sh --no-model   # an update, when the model is unchanged
+```
+
+On the server: `tar -xf diktomed-<version>.tar && cd diktomed-<version> && sudo ./install.sh`.
+It installs to `/opt/diktomed`, writes `.env` with random secrets, turns on
+HTTPS with the hospital's certificate (`certs/cert.pem`, `certs/key.pem`,
+Caddy in `docker-compose.tls.yml`), starts everything and schedules nightly
+backups. The first administrator gets a temporary password that must be
+changed at first login. Later: `sudo ./update.sh` from a new bundle (backs up
+first), `backup.sh`, `restore.sh`.
 
 A single NVIDIA GPU with 8+ GB handles a regional hospital's volume; on CPU the
 same works, several times slower.
@@ -120,9 +140,9 @@ Checks: `cd web && npm run typecheck && npm run lint && npm test`, `cd worker &&
   approved text stays. Agree the period with the hospital's DPO.
 - **No patient data in logs.** The worker logs ids and counts only.
 
-Before real patient data: DPIA with the hospital's data protection officer, TLS
-in front of the web app (`COOKIE_SECURE=true`), disk encryption on the server,
-backups of the `pgdata` and `audio` volumes, and a penetration test.
+Before real patient data: DPIA with the hospital's data protection officer,
+HTTPS (the bundle's installer sets it up), disk encryption on the server,
+backups kept off the server on encrypted storage, and a penetration test.
 
 ## Not yet
 
@@ -132,8 +152,6 @@ backups of the `pgdata` and `audio` volumes, and a penetration test.
 - An admin screen for the protocol sections (today: the `protocol_sections` table).
 - Watching an input folder for dictaphone docking stations.
 - Login with the hospital's Active Directory instead of local accounts.
-- TLS reverse proxy (Caddy/nginx) in the compose file for the hospital certificate.
-- Offline installation bundle (images + model) with an install and an update script.
 
 ## Fonts
 

@@ -1,7 +1,8 @@
 # DiktoMed on one hospital server.
-#   cp .env.example .env   # fill in the secrets
-#   docker compose up -d --build
-# GPU: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+#   Development:  cp .env.example .env && docker compose up -d --build
+#   GPU:          docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+#   Hospital:     the offline bundle (deploy/make-bundle.sh) runs install.sh,
+#                 which uses the prebuilt images below and never builds.
 name: diktomed
 
 services:
@@ -21,6 +22,7 @@ services:
     restart: unless-stopped
 
   migrate:
+    image: diktomed/migrate:${DIKTOMED_VERSION:-dev}
     build: { context: ./web, target: migrate }
     environment:
       DATABASE_URL: postgresql://diktomed:${POSTGRES_PASSWORD}@db:5432/diktomed
@@ -33,6 +35,7 @@ services:
     restart: "no"
 
   web:
+    image: diktomed/web:${DIKTOMED_VERSION:-dev}
     build: { context: ./web, target: runner }
     environment:
       DATABASE_URL: postgresql://diktomed:${POSTGRES_PASSWORD}@db:5432/diktomed
@@ -54,6 +57,7 @@ services:
     restart: unless-stopped
 
   worker:
+    image: diktomed/worker:${DIKTOMED_VERSION:-dev}
     build: ./worker
     environment:
       DATABASE_URL: postgresql://diktomed:${POSTGRES_PASSWORD}@db:5432/diktomed

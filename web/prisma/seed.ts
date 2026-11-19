@@ -64,6 +64,9 @@ async function main() {
         name: process.env.SEED_ADMIN_NAME ?? "Administrators",
         role: "ADMIN",
         passwordHash: await bcrypt.hash(password, 12),
+        // The installer's password is written in .env, so in production it
+        // is only a first-login password.
+        mustChangePassword: production,
       },
     });
     console.log(`Created administrator ${email}`);
