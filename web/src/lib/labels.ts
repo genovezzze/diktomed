@@ -30,6 +30,7 @@ export const FLAG_KIND_LABELS: Record<FlagKind, string> = {
   NUMBER: "Skaitlis",
   TERM: "Bieži labots vārds",
   AI_SUGGESTION: "MI ieteikums",
+  MISSING_SPEECH: "Izlaista runa",
 };
 
 export const SEVERITY_LABELS: Record<FlagSeverity, string> = {

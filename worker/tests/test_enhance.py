@@ -63,4 +63,4 @@ def test_compare_writes_audio_and_text_for_every_preset(tmp_path: Path, monkeypa
         assert (out / f"Operacija_1.{preset}.wav").is_file()
         assert (out / f"Operacija_1.{preset}.txt").read_text(encoding="utf-8").strip()
     printed = capsys.readouterr().out
-    assert "augstākā ticamība" in printed
+    assert "labākais" in printed and "aptver" in printed

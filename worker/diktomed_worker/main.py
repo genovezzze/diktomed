@@ -66,7 +66,12 @@ def process_job(conn: psycopg.Connection, settings: Settings, transcriber: Trans
     transcript.segments = [s for s in transcript.segments if segment_text(s)]
 
     flags = build_flags(
-        transcript.segments, settings.line_threshold, settings.word_threshold, corrections, recording.planned_side
+        transcript.segments,
+        settings.line_threshold,
+        settings.word_threshold,
+        corrections,
+        recording.planned_side,
+        speech=transcript.speech,
     )
     if settings.llm_base_url and settings.llm_model and transcript.segments:
         flags += suggest(transcript.segments, settings.llm_base_url, settings.llm_model, settings.llm_timeout)

@@ -52,6 +52,7 @@ enum FlagKind {
   NUMBER
   TERM
   AI_SUGGESTION
+  MISSING_SPEECH
 
   @@map("flag_kind")
 }

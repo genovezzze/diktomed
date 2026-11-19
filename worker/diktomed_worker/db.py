@@ -155,7 +155,7 @@ def save_transcript(
                 VALUES (%s, %s, %s::flag_kind, %s::flag_severity, %s, %s, %s, %s, %s)
                 """,
                 (
-                    job.recording_id, segment_ids[f.segment_index], f.kind, f.severity,
+                    job.recording_id, None if f.segment_index is None else segment_ids[f.segment_index], f.kind, f.severity,
                     f.start, f.end, f.message, f.excerpt, f.suggestion,
                 ),
             )

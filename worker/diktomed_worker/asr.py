@@ -11,12 +11,12 @@ from __future__ import annotations
 import hashlib
 import logging
 import math
-import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Protocol
 
-from .audio import wav_duration
+from .audio import SAMPLE_RATE, wav_duration
+from .segmenter import pieces as segment_pieces
 
 log = logging.getLogger(__name__)
 
@@ -56,6 +56,9 @@ class Transcript:
     language_prob: float | None
     duration: float
     model_name: str
+    # Where the voice detector heard speech (seconds). Speech with no text
+    # under it is flagged, so nothing the doctor said disappears unnoticed.
+    speech: list[tuple[float, float]] = field(default_factory=list)
 
 
 ProgressCallback = Callable[[float], None]
@@ -91,7 +94,9 @@ class FasterWhisperTranscriber:
     e.g. the AiLab (LU MII) Latvian fine-tune converted with
     scripts/download_model.sh, so nothing is fetched at runtime."""
 
-    def __init__(self, model: str, device: str, compute_type: str, language: str | None, beam_size: int):
+    def __init__(
+        self, model: str, device: str, compute_type: str, language: str | None, beam_size: int, chunk_seconds: float = 20.0
+    ):
         import ctranslate2  # noqa: PLC0415 - heavy import, only when used
         from faster_whisper import WhisperModel  # noqa: PLC0415
 
@@ -101,49 +106,68 @@ class FasterWhisperTranscriber:
             compute_type = "int8_float16" if device == "cuda" else "int8"
         self.language = language
         self.beam_size = beam_size
+        self.chunk_seconds = chunk_seconds
         self.name = f"{Path(model).name} ({device}/{compute_type})"
         log.info("Loading model %s", self.name)
         self._model = WhisperModel(model, device=device, compute_type=compute_type)
 
     def transcribe(self, path: Path, initial_prompt: str | None, on_progress: ProgressCallback | None = None) -> Transcript:
-        segments_iter, info = self._model.transcribe(
-            read_wav_float32(path),
-            language=self.language,
-            beam_size=self.beam_size,
-            word_timestamps=True,
-            # Silence is where Whisper invents text; the VAD cuts it out first.
-            vad_filter=True,
-            vad_parameters={"min_silence_duration_ms": 500},
-            # Not feeding the previous text back stops repetition loops.
-            condition_on_previous_text=False,
-            initial_prompt=initial_prompt,
-            temperature=(0.0, 0.2, 0.4, 0.6),
-        )
+        """Recognises everything louder than the background, one short piece at a time.
+
+        Two ways a dictation used to lose minutes without a trace on muffled
+        audio: faster-whisper's neural voice detector did not hear the speech
+        at all, and Whisper judged whole windows "no speech" and dropped them.
+        Now loudness decides what is sound (segmenter.py), pieces are short,
+        the no-speech skip is off, and the pieces are reported back so speech
+        without text gets a flag.
+        """
+        audio = read_wav_float32(path)
+        total = len(audio)
+        chunks = [{"start": a, "end": b} for a, b in segment_pieces(audio, self.chunk_seconds)]
         segments: list[Segment] = []
-        last_report = 0.0
-        for s in segments_iter:
-            # Segments arrive as they are decoded: report how far into the audio we are.
-            if on_progress and info.duration > 0 and time.monotonic() - last_report > 2:
-                on_progress(min(0.99, float(s.end) / float(info.duration)))
-                last_report = time.monotonic()
-            words = [Word(w.word, float(w.start), float(w.end), float(w.probability)) for w in (s.words or [])]
-            segments.append(
-                Segment(
-                    start=float(s.start),
-                    end=float(s.end),
-                    text=s.text,
-                    words=words,
-                    avg_logprob=float(s.avg_logprob),
-                    no_speech_prob=float(s.no_speech_prob),
-                    compression_ratio=float(s.compression_ratio),
-                )
+        speech: list[tuple[float, float]] = []
+        language, language_prob = self.language, None
+        for n, chunk in enumerate(chunks):
+            offset = chunk["start"] / SAMPLE_RATE
+            speech.append((round(offset, 2), round(chunk["end"] / SAMPLE_RATE, 2)))
+            pieces, info = self._model.transcribe(
+                audio[chunk["start"] : chunk["end"]],
+                language=self.language,
+                beam_size=self.beam_size,
+                word_timestamps=True,
+                vad_filter=False,
+                # Never drop a piece as "no speech": there is sound here.
+                # Doubtful text is flagged for a person instead.
+                no_speech_threshold=None,
+                # Not feeding the previous text back stops repetition loops.
+                condition_on_previous_text=False,
+                initial_prompt=initial_prompt,
+                temperature=(0.0, 0.2, 0.4, 0.6),
             )
+            if n == 0:
+                language, language_prob = info.language, float(info.language_probability)
+            for p in pieces:
+                words = [Word(w.word, round(offset + w.start, 2), round(offset + w.end, 2), float(w.probability)) for w in (p.words or [])]
+                segments.append(
+                    Segment(
+                        start=round(offset + p.start, 2),
+                        end=round(offset + p.end, 2),
+                        text=p.text,
+                        words=words,
+                        avg_logprob=float(p.avg_logprob),
+                        no_speech_prob=float(p.no_speech_prob),
+                        compression_ratio=float(p.compression_ratio),
+                    )
+                )
+            if on_progress and total:
+                on_progress(min(0.99, chunk["end"] / total))
         return Transcript(
             segments=segments,
-            language=info.language,
-            language_prob=float(info.language_probability),
-            duration=float(info.duration),
+            language=language,
+            language_prob=language_prob,
+            duration=total / SAMPLE_RATE,
             model_name=self.name,
+            speech=speech,
         )
 
 
@@ -219,7 +243,14 @@ class FakeTranscriber:
                 s.start, s.end = round(s.start * k, 2), round(s.end * k, 2)
                 for w in s.words:
                     w.start, w.end = round(w.start * k, 2), round(w.end * k, 2)
-        return Transcript(segments=segments, language="lv", language_prob=0.97, duration=duration, model_name=self.name)
+        return Transcript(
+            segments=segments,
+            language="lv",
+            language_prob=0.97,
+            duration=duration,
+            model_name=self.name,
+            speech=[(s.start, s.end) for s in segments],
+        )
 
 
 def make_transcriber(settings) -> Transcriber:
@@ -228,6 +259,11 @@ def make_transcriber(settings) -> Transcriber:
         return FakeTranscriber()
     if settings.asr_backend == "faster-whisper":
         return FasterWhisperTranscriber(
-            settings.asr_model, settings.asr_device, settings.asr_compute_type, settings.asr_language, settings.asr_beam_size
+            settings.asr_model,
+            settings.asr_device,
+            settings.asr_compute_type,
+            settings.asr_language,
+            settings.asr_beam_size,
+            settings.asr_chunk_seconds,
         )
     raise SystemExit(f"Unknown ASR_BACKEND: {settings.asr_backend}")

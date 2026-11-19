@@ -23,6 +23,7 @@ from pathlib import Path
 
 from .asr import Transcript, make_transcriber
 from .audio import ENHANCE_PRESETS, normalize, wav_duration
+from .flags import _covered
 
 LOW_PROB = 0.5
 
@@ -32,16 +33,23 @@ class Score:
     words: int
     mean_prob: float
     low_share: float  # share of words the model was unsure about
+    coverage: float  # share of the sound that has text under it
 
     def line(self) -> str:
-        return f"vārdi {self.words:5d}   vidējā ticamība {self.mean_prob:5.2f}   neskaidri {self.low_share:6.1%}"
+        return (
+            f"vārdi {self.words:5d}   teksts aptver {self.coverage:6.1%} skaņas   "
+            f"vidējā ticamība {self.mean_prob:5.2f}   neskaidri {self.low_share:6.1%}"
+        )
 
 
 def score(transcript: Transcript) -> Score:
     probs = [w.prob for s in transcript.segments for w in s.words]
+    sound = sum(b - a for a, b in transcript.speech)
+    covered = sum(_covered(a, b, transcript.segments) for a, b in transcript.speech)
+    coverage = covered / sound if sound else 0.0
     if not probs:
-        return Score(0, 0.0, 1.0)
-    return Score(len(probs), sum(probs) / len(probs), sum(p < LOW_PROB for p in probs) / len(probs))
+        return Score(0, 0.0, 1.0, coverage)
+    return Score(len(probs), sum(probs) / len(probs), sum(p < LOW_PROB for p in probs) / len(probs), coverage)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -82,8 +90,8 @@ def main(argv: list[str] | None = None) -> int:
             sc = score(transcript)
             results.append((preset, sc))
             print(f"  {preset:8s} {sc.line()}   ({took:.0f} s uz {wav_duration(wav):.0f} s audio)", flush=True)
-        best = max(results, key=lambda r: (r[1].mean_prob, r[1].words))
-        print(f"  -> augstākā ticamība: {best[0]}. Pārbaudiet tekstus mapē {args.out}", flush=True)
+        best = max(results, key=lambda r: (round(r[1].coverage, 1), r[1].mean_prob))
+        print(f"  -> labākais: {best[0]}. Pārbaudiet tekstus mapē {args.out}", flush=True)
     return 0
 
 

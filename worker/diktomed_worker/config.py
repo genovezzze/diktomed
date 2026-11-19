@@ -38,6 +38,7 @@ class Settings:
     asr_compute_type: str  # "auto", "int8", "int8_float16", "float16", ...
     asr_language: str | None  # "lv"; None lets the model detect it
     asr_beam_size: int
+    asr_chunk_seconds: float  # longest piece of speech decoded at once
     audio_enhance: str  # a key of audio.ENHANCE_PRESETS
     line_threshold: float
     word_threshold: float
@@ -79,6 +80,7 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         asr_compute_type=(env.get("ASR_COMPUTE_TYPE") or "auto").strip().lower(),
         asr_language=None if language in ("", "auto") else language,
         asr_beam_size=_int(env, "ASR_BEAM_SIZE", 5),
+        asr_chunk_seconds=min(28.0, max(5.0, _float(env, "ASR_CHUNK_SECONDS", 20.0))),
         audio_enhance=_enhance(env),
         line_threshold=_float(env, "LINE_THRESHOLD", 0.7),
         word_threshold=_float(env, "WORD_THRESHOLD", 0.5),

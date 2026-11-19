@@ -20,7 +20,7 @@ HIGH, MEDIUM, INFO = "HIGH", "MEDIUM", "INFO"
 class FlagDraft:
     kind: str
     severity: str
-    segment_index: int
+    segment_index: int | None  # None: not under any line (e.g. nothing was recognised at all)
     start: float
     end: float
     message: str
@@ -177,14 +177,71 @@ def _hallucination(seg: Segment, text: str, previous: str | None) -> str | None:
     return None
 
 
+# Speech the voice detector heard, but with (almost) no text under it.
+MIN_GAP_SECONDS = 2.0
+MAX_COVERED_SHARE = 0.3
+# A line much sparser than any dictation: part of what was said is missing.
+SPARSE_MIN_SECONDS = 8.0
+SPARSE_WORDS_PER_SECOND = 0.7
+
+
+def _covered(start: float, end: float, segments: list[Segment]) -> float:
+    return sum(max(0.0, min(end, s.end) - max(start, s.start)) for s in segments)
+
+
+def _line_before(t: float, segments: list[Segment]) -> int | None:
+    """The line to attach a flag to: the last one starting before t, else the first."""
+    if not segments:
+        return None
+    before = [i for i, s in enumerate(segments) if s.start <= t]
+    return before[-1] if before else 0
+
+
+def missing_speech_flags(segments: list[Segment], speech: list[tuple[float, float]]) -> list[FlagDraft]:
+    """Where the doctor spoke but the draft has no or too little text.
+
+    Missing text is worse than wrong text: wrong text is in front of the
+    reviewer, missing text is not. So both cases are HIGH and must be
+    listened to before approval.
+    """
+    flags: list[FlagDraft] = []
+    gaps: list[list[float]] = []
+    for start, end in speech:
+        length = end - start
+        if length >= MIN_GAP_SECONDS and _covered(start, end, segments) < MAX_COVERED_SHARE * length:
+            if gaps and start - gaps[-1][1] < 1.0:
+                gaps[-1][1] = end
+            else:
+                gaps.append([start, end])
+    for start, end in gaps:
+        flags.append(
+            FlagDraft(
+                "MISSING_SPEECH", HIGH, _line_before(start, segments), round(start, 2), round(end, 2),
+                f"Šeit ir runa ({end - start:.0f} s), bet tekstā tās nav. Noklausieties un ierakstiet, kas pateikts.",
+            )
+        )
+    for idx, seg in enumerate(segments):
+        length = seg.end - seg.start
+        words = len(segment_text(seg).split())
+        if length >= SPARSE_MIN_SECONDS and words / length < SPARSE_WORDS_PER_SECOND:
+            flags.append(
+                FlagDraft(
+                    "MISSING_SPEECH", HIGH, idx, seg.start, seg.end,
+                    f"Fragmentam par maz teksta ({words} vārdi {length:.0f} s). Iespējams, daļa runas izlaista: noklausieties.",
+                )
+            )
+    return flags
+
+
 def build_flags(
     segments: list[Segment],
     line_threshold: float,
     word_threshold: float,
     corrections: list[Correction],
     planned_side: str | None = None,
+    speech: list[tuple[float, float]] | None = None,
 ) -> list[FlagDraft]:
-    flags: list[FlagDraft] = side_flags(segments, planned_side)
+    flags: list[FlagDraft] = side_flags(segments, planned_side) + missing_speech_flags(segments, speech or [])
     previous_norm: str | None = None
 
     for idx, seg in enumerate(segments):
