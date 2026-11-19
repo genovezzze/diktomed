@@ -104,6 +104,7 @@ export async function buildDocx(input: DocxInput): Promise<Buffer> {
 
 export type ProtocolDocxInput = {
   demo?: boolean;
+  documentTitle: string;
   recordingTitle: string;
   plannedSide: string | null;
   durationSec: number | null;
@@ -119,7 +120,7 @@ export async function buildProtocolDocx(input: ProtocolDocxInput): Promise<Buffe
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { after: 120 },
-      children: [new TextRun({ text: "Operācijas protokols", font: FONT, size: 32, bold: true })],
+      children: [new TextRun({ text: input.documentTitle, font: FONT, size: 32, bold: true })],
     }),
   ];
   if (input.demo) children.push(demoParagraph());
@@ -159,7 +160,7 @@ export async function buildProtocolDocx(input: ProtocolDocxInput): Promise<Buffe
       children: [
         new TextRun({
           text: `Sadaļas sagatavoja DiktoMed (${input.engine ?? "-"}) no apstiprinātā diktāta teksta; katrs lauks pārbaudīts pret tekstu${
-            input.approval ? ", protokolu apstiprināja cilvēks." : ". Pirms lietošanas protokols jāapstiprina."
+            input.approval ? ", dokumentu apstiprināja cilvēks." : ". Pirms lietošanas dokuments jāapstiprina."
           }`,
           font: FONT,
           size: 18,
@@ -170,6 +171,6 @@ export async function buildProtocolDocx(input: ProtocolDocxInput): Promise<Buffe
     }),
   );
 
-  const doc = new Document({ creator: "DiktoMed", title: "Operācijas protokols", sections: [{ children }] });
+  const doc = new Document({ creator: "DiktoMed", title: input.documentTitle, sections: [{ children }] });
   return Packer.toBuffer(doc);
 }

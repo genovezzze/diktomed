@@ -92,15 +92,15 @@ def process_protocol_job(conn: psycopg.Connection, settings: Settings, job: db.J
     if source is None:
         db.mark_failed(conn, job, "Transkripts vēl nav apstiprināts.", final=True)
         return
-    text, planned_side = source
-    sections = db.load_sections(conn)
+    text, planned_side, kind = source
+    sections = db.load_sections(conn, kind)
     if not sections:
-        db.mark_failed(conn, job, "Protokola sadaļas nav iestatītas.", final=True)
+        db.mark_failed(conn, job, "Šim dokumenta veidam nav iestatītu sadaļu.", final=True)
         return
 
     db.set_protocol_processing(conn, job.recording_id)
     llm = (settings.llm_base_url, settings.llm_model, settings.llm_timeout) if settings.llm_base_url and settings.llm_model else None
-    fields, engine = draft_protocol(sections, text, planned_side, settings.protocol_backend, llm)
+    fields, engine = draft_protocol(sections, text, planned_side, settings.protocol_backend, llm, kind)
     db.save_protocol(conn, job, sections, fields, engine)
     warnings = sum(1 for f in fields if f.check not in ("OK", "EMPTY"))
     log.info(

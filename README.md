@@ -26,11 +26,22 @@ dictaphone file / browser recording
   -> approved pairs (audio + text) -> export, evaluate and fine-tune the model on site
 ```
 
-### Operation protocol
+### Operation protocol or epicrisis
+
+Each dictation is drafted into one of two documents, chosen at upload and
+changeable later on the document page:
+
+- **operation protocol**: diagnosis, operation, anaesthesia, course,
+  medication during the operation, materials and implants, findings, blood
+  loss, drainage, complications, histology, orders;
+- **epicrisis**: main diagnosis, secondary diagnoses, allergies, complaints,
+  course of illness, examinations, treatment, recommendations. The doctor says
+  which diagnosis is the main one; the system only sorts what was said.
 
 After the transcript is approved, the worker splits it into the sections of
-the protocol form (`protocol_sections`: diagnosis, operation, anaesthesia,
-course, findings, blood loss, drainage, complications, histology, orders).
+that document (`protocol_sections`, per `document_kind`). Doctors often
+dictate a heading first ("Diagnoze." then the diagnosis): the sentences after
+a spoken heading go to that section.
 Each field is a value plus the exact passages it rests on, and is checked:
 
 | Check | Catches |

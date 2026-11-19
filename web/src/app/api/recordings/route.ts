@@ -2,7 +2,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { promises as fs } from "node:fs";
 import { NextResponse } from "next/server";
-import type { Side } from "@prisma/client";
+import type { DocumentKind, Side } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { sessionForApi } from "@/lib/auth";
 import { audit } from "@/lib/audit";
@@ -43,6 +43,8 @@ export async function POST(request: Request) {
   const rawSide = String(form.get("plannedSide") ?? "");
   const plannedSide: Side | null = rawSide === "LEFT" || rawSide === "RIGHT" || rawSide === "BOTH" ? rawSide : null;
 
+  const documentKind: DocumentKind = String(form.get("documentKind") ?? "") === "EPICRISIS" ? "EPICRISIS" : "OPERATION";
+
   const rawTitle = String(form.get("title") ?? "").trim().slice(0, 200);
   const originalName = path.basename(file.name).slice(0, 255);
   const title = rawTitle || originalName.replace(/\.[^.]+$/, "");
@@ -62,6 +64,7 @@ export async function POST(request: Request) {
         mimeType: file.type || null,
         sizeBytes: file.size,
         plannedSide,
+        documentKind,
         uploadedById: session.userId,
       },
     });
@@ -72,7 +75,7 @@ export async function POST(request: Request) {
   await audit("RECORDING_UPLOADED", {
     userId: session.userId,
     recordingId: recording.id,
-    details: { sizeBytes: file.size, extension: ext, plannedSide },
+    details: { sizeBytes: file.size, extension: ext, plannedSide, documentKind },
   });
 
   return NextResponse.json({ id: recording.id }, { status: 201 });

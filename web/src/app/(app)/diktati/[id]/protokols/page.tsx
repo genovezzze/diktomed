@@ -7,13 +7,14 @@ import { AutoRefresh } from "@/components/recordings/auto-refresh";
 import { METRIC_SURFACE } from "@/components/dashboard/apple";
 import { ProtocolWorkspace } from "@/components/protocol/protocol-workspace";
 import { parseQuotes, quoteRange } from "@/lib/protocol";
-import { SIDE_LABELS } from "@/lib/labels";
+import { DOCUMENT_KIND_ACC, DOCUMENT_KIND_GEN, DOCUMENT_KIND_LABELS, SIDE_LABELS } from "@/lib/labels";
 import { isDemoModel } from "@/lib/demo";
 import { cn } from "@/lib/utils";
 import { RedraftButton } from "./redraft-button";
+import { KindSwitch } from "./kind-switch";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Protokols" };
+export const metadata = { title: "Dokuments" };
 
 function StateCard({ icon, title, text, children }: { icon: React.ReactNode; title: string; text: string; children?: React.ReactNode }) {
   return (
@@ -37,6 +38,7 @@ export default async function ProtocolPage({ params }: { params: { id: string } 
       title: true,
       status: true,
       plannedSide: true,
+      documentKind: true,
       modelName: true,
       audioDeletedAt: true,
       document: { select: { text: true } },
@@ -58,6 +60,8 @@ export default async function ProtocolPage({ params }: { params: { id: string } 
     </Link>
   );
   const protocol = recording.protocol;
+  const kind = recording.documentKind;
+  const acc = DOCUMENT_KIND_ACC[kind];
 
   let body: React.ReactNode;
   if (recording.status !== "APPROVED" || !recording.document) {
@@ -65,17 +69,17 @@ export default async function ProtocolPage({ params }: { params: { id: string } 
       <StateCard
         icon={<FileText className="h-8 w-8 text-muted-foreground" />}
         title="Vispirms apstipriniet transkriptu"
-        text="Protokols tiek sagatavots tikai no cilvēka apstiprināta teksta, nekad tieši no audio."
+        text={`${DOCUMENT_KIND_LABELS[kind]} tiek sagatavots tikai no cilvēka apstiprināta teksta, nekad tieši no audio.`}
       />
     );
   } else if (!protocol) {
     body = (
       <StateCard
         icon={<FileText className="h-8 w-8 text-[#0A84FF]" />}
-        title="Protokols vēl nav sagatavots"
-        text="Sistēma sadalīs apstiprināto tekstu pa protokola sadaļām. Katram laukam būs norādīts citāts no teksta."
+        title={`${DOCUMENT_KIND_LABELS[kind]}: vēl nav sagatavots`}
+        text={`Sistēma sadalīs apstiprināto tekstu pa ${DOCUMENT_KIND_GEN[kind]} sadaļām. Katram laukam būs norādīts citāts no teksta.`}
       >
-        <RedraftButton recordingId={recording.id} label="Sagatavot protokolu" />
+        <RedraftButton recordingId={recording.id} label={`Sagatavot ${acc}`} />
       </StateCard>
     );
   } else if (protocol.status === "QUEUED" || protocol.status === "PROCESSING") {
@@ -84,7 +88,7 @@ export default async function ProtocolPage({ params }: { params: { id: string } 
         <AutoRefresh active />
         <StateCard
           icon={<Loader2 className="h-8 w-8 animate-spin text-[#0A84FF]" />}
-          title="Sagatavo protokolu"
+          title={`Sagatavo ${acc}`}
           text="Teksts tiek sadalīts pa sadaļām un katrs lauks pārbaudīts pret apstiprināto tekstu. Lapa atjaunosies automātiski."
         />
       </>
@@ -93,7 +97,7 @@ export default async function ProtocolPage({ params }: { params: { id: string } 
     body = (
       <StateCard
         icon={<AlertTriangle className="h-8 w-8 text-[#FF453A]" />}
-        title="Protokolu neizdevās sagatavot"
+        title={`Neizdevās sagatavot ${acc}`}
         text={protocol.errorMessage ?? "Nezināma kļūda."}
       >
         <RedraftButton recordingId={recording.id} label="Mēģināt vēlreiz" />
@@ -103,6 +107,7 @@ export default async function ProtocolPage({ params }: { params: { id: string } 
     body = (
       <ProtocolWorkspace
         demo={isDemoModel(recording.modelName)}
+        documentKind={kind}
         recordingId={recording.id}
         recordingTitle={recording.title}
         plannedSide={recording.plannedSide ? SIDE_LABELS[recording.plannedSide] : null}
@@ -135,6 +140,7 @@ export default async function ProtocolPage({ params }: { params: { id: string } 
   return (
     <div className="mx-auto max-w-[1400px]">
       {back}
+      <KindSwitch recordingId={recording.id} kind={kind} locked={protocol?.status === "APPROVED"} hasDraft={protocol?.status === "READY"} />
       {body}
     </div>
   );

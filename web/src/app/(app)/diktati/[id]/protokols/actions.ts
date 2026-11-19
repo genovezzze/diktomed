@@ -141,3 +141,30 @@ export async function redraftProtocol(input: { recordingId: string }): Promise<A
   revalidatePath(`/diktati/${recordingId}/protokols`);
   return { ok: true };
 }
+
+/** Switches between operation protocol and epicrisis. A draft is made again
+ * for the new kind; an approved document cannot change. */
+export async function setDocumentKind(input: { recordingId: string; kind: "OPERATION" | "EPICRISIS" }): Promise<ActionResult> {
+  const session = await requireUser();
+  const parsed = z.object({ recordingId: uuid, kind: z.enum(["OPERATION", "EPICRISIS"]) }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Nederīgi dati." };
+  const { recordingId, kind } = parsed.data;
+
+  const recording = await prisma.recording.findUnique({
+    where: { id: recordingId },
+    select: { status: true, documentKind: true, protocol: { select: { status: true } } },
+  });
+  if (!recording) return { ok: false, error: "Diktāts nav atrasts." };
+  if (recording.documentKind === kind) return { ok: true };
+  if (recording.protocol?.status === "APPROVED") return { ok: false, error: "Apstiprinātam dokumentam veidu mainīt nevar." };
+  if (recording.protocol?.status === "QUEUED" || recording.protocol?.status === "PROCESSING") {
+    return { ok: false, error: "Pagaidiet, kamēr dokuments tiek sagatavots." };
+  }
+
+  await prisma.recording.update({ where: { id: recordingId }, data: { documentKind: kind } });
+  await audit("DOCUMENT_KIND_CHANGED", { userId: session.userId, recordingId, details: { kind } });
+  // An existing draft belongs to the other kind: draft again.
+  if (recording.status === "APPROVED" && recording.protocol) return redraftProtocol({ recordingId });
+  revalidatePath(`/diktati/${recordingId}/protokols`);
+  return { ok: true };
+}

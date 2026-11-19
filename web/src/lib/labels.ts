@@ -1,4 +1,4 @@
-import type { FlagKind, FlagSeverity, RecordingStatus, Side } from "@prisma/client";
+import type { FlagKind, FlagSeverity, RecordingStatus, Side, DocumentKind } from "@prisma/client";
 
 export const SIDE_LABELS: Record<Side, string> = {
   LEFT: "Kreisā",
@@ -33,6 +33,15 @@ export const FLAG_KIND_LABELS: Record<FlagKind, string> = {
   MISSING_SPEECH: "Izlaista runa",
 };
 
+export const DOCUMENT_KIND_LABELS: Record<DocumentKind, string> = {
+  OPERATION: "Operācijas protokols",
+  EPICRISIS: "Epikrīze",
+};
+/** "Sagatavot protokolu / epikrīzi". */
+export const DOCUMENT_KIND_ACC: Record<DocumentKind, string> = { OPERATION: "protokolu", EPICRISIS: "epikrīzi" };
+/** "protokola / epikrīzes sadaļas". */
+export const DOCUMENT_KIND_GEN: Record<DocumentKind, string> = { OPERATION: "protokola", EPICRISIS: "epikrīzes" };
+
 export const SEVERITY_LABELS: Record<FlagSeverity, string> = {
   HIGH: "Augsts risks",
   MEDIUM: "Vidējs risks",
@@ -60,6 +69,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   CORRECTION_TOGGLED: "Mainīja labojuma ieteikšanu",
   CORRECTION_REMOVED: "Dzēsa iemācīto labojumu",
   PROTOCOL_REQUESTED: "Pieprasīja protokolu no jauna",
+  DOCUMENT_KIND_CHANGED: "Mainīja dokumenta veidu",
   PROTOCOL_DRAFTED: "Protokola melnraksts sagatavots",
   PROTOCOL_FIELD_ACCEPTED: "Pieņēma protokola lauku",
   PROTOCOL_FIELD_REJECTED: "Noraidīja protokola lauku",

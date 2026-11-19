@@ -1,4 +1,4 @@
-"""Structured operation protocol from an APPROVED transcript.
+"""Structured document (operation protocol or epicrisis) from an APPROVED transcript.
 
 The protocol is never written from audio and never from the model's memory:
 every field is a value plus the exact passages of the approved text it rests
@@ -115,34 +115,120 @@ _SENTENCE = re.compile(r"(?<=[.!?])\s+")
 
 # Keyword rules per default section. Unknown (hospital-added) sections stay
 # empty in rules mode; the LLM extractor reads their hints instead.
+_DRUG = r"(\bmg\b|miligram|\bg\b|gram|\bml\b|vienīb|\bSV\b|i/v|intravenoz|perorāl|antibiotik|cefazolīn|cefuroksīm|ceftriakson|metronidazol|ciprofloksacīn|amoksicilīn|heparīn|fraksiparīn|tranekscām)"
 _RULES: dict[str, re.Pattern[str]] = {
-    "diagnoze": re.compile(r"diagnoz", re.I),
+    # --- operation protocol
+    "diagnoze": re.compile(r"diagno[zs]", re.I),
     "operacija": re.compile(r"(skopij|ektomij|tomij|plastik|osteosintēz|rezekcij|endoprotez)", re.I),
     "anestezija": re.compile(r"(anestēzij|narkoz)", re.I),
-    "gaita": re.compile(r"(ievadīt|veikt[as]?\b|izdalīt|izskalot|sašūt|uzlikt|evakuēt|klipsēt|pārgriezt|hemostāz)", re.I),
+    "gaita": re.compile(r"(ievadīt|veikt[as]?\b|izdalīt|izskalot|sašūt|uzlikt|evakuēt|klipsēt|pārgriezt|griezum|hemostāz)", re.I),
+    "medikamenti": re.compile(_DRUG, re.I),
+    "materiali": re.compile(r"(diegs|diegi|diegu|šuvju materiāl|vicryl|vikril|prolen|monocryl|monokril|pds\b|implant|siet[su]?\b|klips|klipš|skavas|stent|endoprotēz|plāksn|skrūv)", re.I),
     "atradne": re.compile(r"(konstatē|redzam|atrast|palielināt|sabiezēt|izsvīdum)", re.I),
     "asins_zudums": re.compile(r"asins zudum", re.I),
     "drenaza": re.compile(r"drenāž", re.I),
     "komplikacijas": re.compile(r"komplikācij", re.I),
     "histologija": re.compile(r"histolo", re.I),
-    "nozimejumi": re.compile(r"(pēc operācijas|intravenoz|perorāl|miligram|\bmg\b)", re.I),
+    "nozimejumi": re.compile(r"(pēc operācijas|nozīm)", re.I),
+    # --- epicrisis
+    "ep_pamatdiagnoze": re.compile(r"(diagno[zs]|\b[A-TV-Z]\d{2}(\.\d{1,2})?\b)", re.I),
+    "ep_blakusdiagnozes": re.compile(r"(blakus|pavadoš|cukura diabēt|diabēt|hipertensij|hipertonij|sirds mazspēj|išēmisk|mirdzaritmij|astm|HOPS|nieru mazspēj|aptaukošan|hipotireoz)", re.I),
+    "ep_alergijas": re.compile(r"(alerģ|nepanes)", re.I),
+    "ep_sudzibas": re.compile(r"(sūdz|stacionēt|iestājās|iestājies|atvest|vērsās|uzņemt|sāpes|sāpēm)", re.I),
+    "ep_izmeklejumi": re.compile(r"(datortomogr|\bDT\b|USG|ultrason|rentgen|\bMR\b|magnētisk|analīz|leikocīt|CRO|C reaktīv|hemoglobīn|kreatinīn|EKG|skopij|uzsējum|biopsij)", re.I),
+    "ep_rekomendacijas": re.compile(r"(rekomend|\blietot|ieteicam|ieteikt|turpināt|ģimenes ārst|kontrol|vizīt|ierasties|ambulator|izrakst)", re.I),
+    "ep_arstesana": re.compile(r"(ārstēt|ārstēšan|saņēm|ordinēt|ievadīt|uzsākt|sākt|antibiotik|operēt|operācij|veikta|veikts|drenēt)" + "|" + _DRUG, re.I),
+    "ep_gaita": re.compile(r"(stāvoklis|uzlabojās|pasliktinājās|dinamik|gaita|norisināj|stabil)", re.I),
 }
-# A sentence that already named the operation or the anaesthesia is not also
-# a step of its course.
-_EXCLUSIVE_BEFORE = {"gaita": ("operacija", "anestezija", "drenaza", "nozimejumi"), "atradne": ("komplikacijas", "drenaza")}
+
+# Rules mode places a sentence in one section only, deciding in this order:
+# the more specific a section, the earlier it picks. Sections not listed
+# (added by the hospital) come last.
+_ORDER = {
+    "OPERATION": ["diagnoze", "anestezija", "drenaza", "asins_zudums", "komplikacijas", "histologija", "nozimejumi",
+                  "materiali", "medikamenti", "operacija", "atradne", "gaita"],
+    "EPICRISIS": ["ep_alergijas", "ep_rekomendacijas", "ep_blakusdiagnozes", "ep_pamatdiagnoze", "ep_izmeklejumi",
+                  "ep_sudzibas", "ep_arstesana", "ep_gaita"],
+}
+# Sections that may share a sentence with others: the operation's name also
+# says what was found or done.
+_SHARED = {"diagnoze", "operacija"}
 
 
-def rules_extract(sections: list[Section], source: str) -> list[FieldDraft]:
+# A spoken heading is a sentence that is only a section name ("Diagnoze.",
+# "Rekomendācijas:"). Spelling variants the recogniser produces are included.
+_HEADINGS: dict[str, re.Pattern[str]] = {
+    key: re.compile(rf"^\W*(?:{pattern})\W*$", re.I)
+    for key, pattern in {
+        "diagnoze": r"(pēcoperācijas |pirmsoperācijas )?diagno[zs]\w*",
+        "operacija": r"operācija|operācijas nosaukums",
+        "anestezija": r"anestēzija|narkoze",
+        "gaita": r"operācijas gaita|gaita",
+        "medikamenti": r"medikamenti|ievadītie medikamenti",
+        "materiali": r"materiāli|implanti|materiāli un implanti",
+        "atradne": r"atradne",
+        "asins_zudums": r"asins zudums",
+        "drenaza": r"drenāža",
+        "komplikacijas": r"komplikācijas",
+        "histologija": r"histoloģija",
+        "nozimejumi": r"nozīmējumi|pēcoperācijas nozīmējumi",
+        "ep_pamatdiagnoze": r"(pamat|galvenā )?diagno[zs]\w*",
+        "ep_blakusdiagnozes": r"blakus\s?(diagno[zs]\w*|slimības)",
+        "ep_alergijas": r"alerģijas|alerģija",
+        "ep_sudzibas": r"sūdzības|anamnēze",
+        "ep_gaita": r"slimības gaita|gaita",
+        "ep_izmeklejumi": r"izmeklējumi|izmeklējumu rezultāti",
+        "ep_arstesana": r"ārstēšana|ārstēšanās|terapija",
+        "ep_rekomendacijas": r"rekomendācijas|ieteikumi",
+    }.items()
+}
+HEADING_SPAN = 4  # sentences a spoken heading carries at most
+
+
+def _headed(sentences: list[str], sections: list[Section]) -> dict[str, list[str]]:
+    """Doctors often dictate a heading first: "Diagnoze." then the diagnosis.
+    The sentences after a heading belong to its section, up to the next
+    heading (one sentence for a single-value section)."""
+    out: dict[str, list[str]] = {}
+    current: Section | None = None
+    left = 0
+    for sentence in sentences:
+        heading = next((sec for sec in sections if (h := _HEADINGS.get(sec.key)) and h.match(sentence)), None)
+        if heading:
+            current, left = heading, (HEADING_SPAN if heading.multi else 1)
+            continue
+        if current and left > 0:
+            out.setdefault(current.key, []).append(sentence)
+            left -= 1
+    return out
+
+
+def rules_extract(sections: list[Section], source: str, kind: str = "OPERATION") -> list[FieldDraft]:
     sentences = [s.strip() for s in _SENTENCE.split(" ".join(source.split())) if s.strip()]
-    taken: dict[str, list[str]] = {}
-    for section in sorted(sections, key=lambda s: (s.key in _EXCLUSIVE_BEFORE, s.position)):
+    order = _ORDER.get(kind, [])
+    ranked = sorted(sections, key=lambda s: (order.index(s.key) if s.key in order else len(order), s.position))
+    # Sentences under a spoken heading go to that section first.
+    taken: dict[str, list[str]] = _headed(sentences, sections)
+    headings = {x for x in sentences if any((h := _HEADINGS.get(sec.key)) and h.match(x) for sec in sections)}
+    used: set[str] = {q for quotes in taken.values() for q in quotes} | headings
+    for section in ranked:
+        headed = taken.get(section.key, [])
+        if headed and not section.multi:
+            continue
         rule = _RULES.get(section.key)
         if rule is None:
-            taken[section.key] = []
+            taken[section.key] = headed
             continue
-        blocked = {q for other in _EXCLUSIVE_BEFORE.get(section.key, ()) for q in taken.get(other, [])}
-        hits = [s for s in sentences if rule.search(s) and s not in blocked]
-        taken[section.key] = hits if section.multi else hits[:1]
+        hits = [s for s in sentences if rule.search(s) and s not in headings and (section.key in _SHARED or s not in used)]
+        if section.key == "ep_pamatdiagnoze":
+            # The main diagnosis is the first one named; the others are secondary.
+            hits = [s for s in hits if s not in used]
+        hits = hits if section.multi else hits[:1]
+        # Under a heading and elsewhere in the dictation: both, in text order.
+        hits = [x for x in sentences if x in headed or x in hits]
+        taken[section.key] = hits
+        if section.key not in _SHARED:
+            used.update(hits)
 
     drafts: list[FieldDraft] = []
     for section in sections:
@@ -159,13 +245,18 @@ def rules_extract(sections: list[Section], source: str) -> list[FieldDraft]:
 
 # --- LLM extractor ---------------------------------------------------------------
 
+DOCUMENT_LV = {"OPERATION": "operācijas protokola", "EPICRISIS": "epikrīzes"}
+
 SYSTEM_PROMPT = (
-    "Tu aizpildi operācijas protokola laukus latviešu valodā TIKAI no dotā apstiprinātā "
+    "Tu aizpildi {document} laukus latviešu valodā TIKAI no dotā apstiprinātā "
     "diktāta teksta. Katram laukam atgriez \"value\" (īss, protokolam piemērots teksts) un "
     "\"quotes\" - precīzus, burtiskus fragmentus no teksta, uz kuriem vērtība balstās. "
     "Ja tekstā informācijas nav, \"value\": null un \"quotes\": []. Nepievieno faktus, kuru "
     "tekstā nav. Skaitļus, devas un pusi (kreisā/labā) nemaini un neizdomā. "
-    "Atbildi tikai ar JSON: {\"fields\":[{\"key\":\"...\",\"value\":...,\"quotes\":[...]}]}"
+    "Ārsts var lēkāt pa tēmām un vēlāk papildināt iepriekš teikto: ņem vērā visu tekstu. "
+    "Diagnozes nesaki pats: ja ārsts nosauc vairākas, galvenā ir tā, ko viņš sauc par galveno "
+    "(vai pirmā), pārējās ir blakusdiagnozes. SSK-10 kodus raksti tikai tad, ja tie pateikti. "
+    "Atbildi tikai ar JSON: {{\"fields\":[{{\"key\":\"...\",\"value\":...,\"quotes\":[...]}}]}}"
 )
 
 
@@ -192,14 +283,16 @@ def parse_llm_fields(raw: object, sections: list[Section]) -> list[FieldDraft]:
     return [by_key.get(s.key, FieldDraft(s.key, None, [])) for s in sections]
 
 
-def llm_extract(sections: list[Section], source: str, base_url: str, model: str, timeout: float) -> list[FieldDraft]:
+def llm_extract(
+    sections: list[Section], source: str, base_url: str, model: str, timeout: float, kind: str = "OPERATION"
+) -> list[FieldDraft]:
     body = json.dumps(
         {
             "model": model,
             "temperature": 0,
             "response_format": {"type": "json_object"},
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": SYSTEM_PROMPT.format(document=DOCUMENT_LV.get(kind, DOCUMENT_LV["OPERATION"]))},
                 {"role": "user", "content": build_user_prompt(sections, source)},
             ],
         }
@@ -218,6 +311,7 @@ def draft_protocol(
     planned_side: str | None,
     backend: str,
     llm: tuple[str, str, float] | None,
+    kind: str = "OPERATION",
 ) -> tuple[list[FieldDraft], str]:
     """Drafts and checks every field. Returns (fields, engine name)."""
     drafts: list[FieldDraft] | None = None
@@ -225,12 +319,12 @@ def draft_protocol(
     if backend == "llm" and llm:
         base_url, model, timeout = llm
         try:
-            drafts, engine = llm_extract(sections, source, base_url, model, timeout), f"MI: {model}"
+            drafts, engine = llm_extract(sections, source, base_url, model, timeout, kind), f"MI: {model}"
         except Exception as exc:  # noqa: BLE001 - the protocol still gets drafted
             log.warning("LLM protocol extraction failed (%s), falling back to rules", type(exc).__name__)
             engine = "noteikumi (MI nebija pieejams)"
     if drafts is None:
-        drafts = rules_extract(sections, source)
+        drafts = rules_extract(sections, source, kind)
     return [validate(d, source, planned_side) for d in drafts], engine
 
 

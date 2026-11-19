@@ -234,22 +234,23 @@ def mark_audio_deleted(conn: psycopg.Connection, recording_id: str) -> None:
 # --- protocol ----------------------------------------------------------------
 
 
-def load_protocol_input(conn: psycopg.Connection, recording_id: str) -> tuple[str, str | None] | None:
-    """(approved document text, planned side), or None if not approved."""
+def load_protocol_input(conn: psycopg.Connection, recording_id: str) -> tuple[str, str | None, str] | None:
+    """(approved document text, planned side, document kind), or None if not approved."""
     row = conn.execute(
         """
-        SELECT d.text, r.planned_side::text FROM documents d JOIN recordings r ON r.id = d.recording_id
+        SELECT d.text, r.planned_side::text, r.document_kind::text FROM documents d JOIN recordings r ON r.id = d.recording_id
         WHERE d.recording_id = %s AND r.status = 'APPROVED'
         """,
         (recording_id,),
     ).fetchone()
     conn.commit()
-    return (row[0], row[1]) if row else None
+    return (row[0], row[1], row[2]) if row else None
 
 
-def load_sections(conn: psycopg.Connection) -> list[Section]:
+def load_sections(conn: psycopg.Connection, kind: str = "OPERATION") -> list[Section]:
     rows = conn.execute(
-        "SELECT key, title, hint, position, multi FROM protocol_sections WHERE active ORDER BY position"
+        "SELECT key, title, hint, position, multi FROM protocol_sections WHERE active AND document_kind = %s::document_kind ORDER BY position",
+        (kind,),
     ).fetchall()
     conn.commit()
     return [Section(*r) for r in rows]

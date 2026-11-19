@@ -1,4 +1,4 @@
-import type { FlagKind, FlagSeverity, FlagStatus, RecordingStatus, Side } from "@prisma/client";
+import type { DocumentKind, FlagKind, FlagSeverity, FlagStatus, RecordingStatus, Side } from "@prisma/client";
 
 export type WordView = { w: string; s: number; e: number; p: number };
 
@@ -36,6 +36,7 @@ export type RecordingView = {
   language: string | null;
   languageProb: number | null;
   plannedSide: Side | null;
+  documentKind: DocumentKind;
   modelName: string | null;
   createdAt: string;
   uploadedBy: string;

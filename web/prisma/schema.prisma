@@ -57,6 +57,14 @@ enum FlagKind {
   @@map("flag_kind")
 }
 
+/// Which document is drafted from the approved transcript.
+enum DocumentKind {
+  OPERATION // operācijas protokols
+  EPICRISIS // epikrīze / izraksts
+
+  @@map("document_kind")
+}
+
 enum FlagSeverity {
   HIGH
   MEDIUM
@@ -128,6 +136,7 @@ model Recording {
   language        String?
   languageProb    Float?          @map("language_prob")
   plannedSide     Side?           @map("planned_side")
+  documentKind    DocumentKind    @default(OPERATION) @map("document_kind")
   modelName       String?         @map("model_name")
   status          RecordingStatus @default(QUEUED)
   errorMessage    String?         @map("error_message")
@@ -348,6 +357,8 @@ model ProtocolSection {
   /// Several sentences may belong here (e.g. the course of the operation).
   multi    Boolean @default(false)
   active   Boolean @default(true)
+  /// The document this section belongs to.
+  documentKind DocumentKind @default(OPERATION) @map("document_kind")
 
   @@map("protocol_sections")
 }

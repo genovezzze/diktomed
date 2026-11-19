@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { sessionForApi } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { buildProtocolDocx } from "@/lib/docx";
-import { SIDE_LABELS } from "@/lib/labels";
+import { DOCUMENT_KIND_LABELS, SIDE_LABELS } from "@/lib/labels";
 import { isDemoModel } from "@/lib/demo";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +21,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       id: true,
       title: true,
       plannedSide: true,
+      documentKind: true,
       durationSec: true,
       createdAt: true,
       modelName: true,
@@ -31,11 +32,12 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   });
   const protocol = recording?.protocol;
   if (!recording || !protocol || (protocol.status !== "READY" && protocol.status !== "APPROVED")) {
-    return NextResponse.json({ error: "Protokols vēl nav gatavs." }, { status: 404 });
+    return NextResponse.json({ error: "Dokuments vēl nav gatavs." }, { status: 404 });
   }
 
   const buffer = await buildProtocolDocx({
     demo: isDemoModel(recording.modelName),
+    documentTitle: DOCUMENT_KIND_LABELS[recording.documentKind],
     recordingTitle: recording.title,
     plannedSide: recording.plannedSide ? SIDE_LABELS[recording.plannedSide] : null,
     durationSec: recording.durationSec,
@@ -49,12 +51,13 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 
   await audit("PROTOCOL_DOCX_EXPORTED", { userId: session.userId, recordingId: recording.id, details: { draft: protocol.status !== "APPROVED" } });
 
-  const safeName = recording.title.replace(/[^\p{L}\p{N} _-]+/gu, "").trim().slice(0, 70) || "protokols";
-  const fileName = `${safeName} - protokols${protocol.status === "APPROVED" ? "" : " (melnraksts)"}.docx`;
+  const safeName = recording.title.replace(/[^\p{L}\p{N} _-]+/gu, "").trim().slice(0, 70) || "dokuments";
+  const suffix = recording.documentKind === "EPICRISIS" ? "epikrize" : "protokols";
+  const fileName = `${safeName} - ${suffix}${protocol.status === "APPROVED" ? "" : " (melnraksts)"}.docx`;
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "Content-Disposition": `attachment; filename="protokols.docx"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      "Content-Disposition": `attachment; filename="${suffix}.docx"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
       "Cache-Control": "no-store",
     },
   });

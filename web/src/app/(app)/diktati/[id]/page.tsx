@@ -116,6 +116,7 @@ export default async function ReviewPage({ params }: { params: { id: string } })
           language: recording.language,
           languageProb: recording.languageProb,
           plannedSide: recording.plannedSide,
+          documentKind: recording.documentKind,
           modelName: recording.modelName,
           createdAt: recording.createdAt.toISOString(),
           uploadedBy: recording.uploadedBy.name,

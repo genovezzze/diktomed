@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { FieldCheck, FieldStatus, ProtocolStatus } from "@prisma/client";
+import type { DocumentKind, FieldCheck, FieldStatus, ProtocolStatus } from "@prisma/client";
+import { DOCUMENT_KIND_ACC, DOCUMENT_KIND_LABELS } from "@/lib/labels";
 import { AlertTriangle, Check, CheckCircle2, Download, FileText, Pencil, Play, RotateCcw, ShieldCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateTimeLV } from "@/lib/format";
@@ -41,6 +42,7 @@ export type ProtocolFieldView = {
 
 interface ProtocolWorkspaceProps {
   demo: boolean;
+  documentKind: DocumentKind;
   recordingId: string;
   recordingTitle: string;
   plannedSide: string | null;
@@ -145,7 +147,7 @@ export function ProtocolWorkspace(props: ProtocolWorkspaceProps) {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="font-display text-[24px] font-medium leading-tight">Operācijas protokols</h1>
+              <h1 className="font-display text-[24px] font-medium leading-tight">{DOCUMENT_KIND_LABELS[props.documentKind]}</h1>
               <Badge variant={PROTOCOL_STATUS_BADGE[status]}>{PROTOCOL_STATUS_LABELS[status]}</Badge>
             </div>
             <div className="mt-1.5 flex flex-wrap gap-x-2 text-[13px] text-muted-foreground">
@@ -167,7 +169,7 @@ export function ProtocolWorkspace(props: ProtocolWorkspaceProps) {
                 size="sm"
                 disabled={pending}
                 onClick={() => {
-                  if (window.confirm("Sagatavot protokolu no jauna? Pašreizējie lēmumi par laukiem tiks dzēsti.")) {
+                  if (window.confirm(`Sagatavot ${DOCUMENT_KIND_ACC[props.documentKind]} no jauna? Pašreizējie lēmumi par laukiem tiks dzēsti.`)) {
                     run(() => redraftProtocol({ recordingId }));
                   }
                 }}
@@ -179,7 +181,7 @@ export function ProtocolWorkspace(props: ProtocolWorkspaceProps) {
             <Button asChild variant="outline" size="sm">
               <a href={`/api/recordings/${recordingId}/protocol-docx`}>
                 <Download className="h-3.5 w-3.5" />
-                {status === "APPROVED" ? "Protokols DOCX" : "Melnraksts DOCX"}
+                {status === "APPROVED" ? "DOCX" : "Melnraksts DOCX"}
               </a>
             </Button>
             {editable && (
@@ -190,7 +192,7 @@ export function ProtocolWorkspace(props: ProtocolWorkspaceProps) {
                 onClick={() => run(() => approveProtocol({ recordingId }))}
               >
                 <ShieldCheck className="h-3.5 w-3.5" />
-                Apstiprināt protokolu
+                Apstiprināt {DOCUMENT_KIND_ACC[props.documentKind]}
               </Button>
             )}
           </div>
@@ -271,7 +273,7 @@ export function ProtocolWorkspace(props: ProtocolWorkspaceProps) {
                   <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed">{f.value}</p>
                 ) : (
                   <p className="mt-2 text-[14px] italic text-muted-foreground">
-                    {f.status === "REJECTED" ? "Noraidīts, protokolā netiks iekļauts." : "Diktātā nav minēts."}
+                    {f.status === "REJECTED" ? "Noraidīts, dokumentā netiks iekļauts." : "Diktātā nav minēts."}
                   </p>
                 )}
 

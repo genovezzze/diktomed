@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, ChevronRight, ClipboardList, Download, FileAudio, Pause, Play, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatClock, formatDateTimeLV, formatPercent } from "@/lib/format";
-import { SIDE_LABELS } from "@/lib/labels";
+import { SIDE_LABELS, DOCUMENT_KIND_LABELS } from "@/lib/labels";
 import { DEMO_BANNER, isDemoModel } from "@/lib/demo";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/recordings/status-badge";
@@ -277,7 +277,7 @@ export function ReviewWorkspace({ recording, segments, flags }: ReviewWorkspaceP
               <Button asChild size="sm">
                 <Link href={`/diktati/${recording.id}/protokols`}>
                   <ClipboardList className="h-3.5 w-3.5" />
-                  Operācijas protokols
+                  {DOCUMENT_KIND_LABELS[recording.documentKind]}
                 </Link>
               </Button>
             )}

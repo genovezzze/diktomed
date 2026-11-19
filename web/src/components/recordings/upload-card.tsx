@@ -18,6 +18,11 @@ const SIDES = [
   { value: "BOTH", label: "Abas" },
 ] as const;
 
+const KINDS = [
+  { value: "OPERATION", label: "Operācija" },
+  { value: "EPICRISIS", label: "Epikrīze" },
+] as const;
+
 export function UploadCard({ maxBytes }: { maxBytes: number }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -28,6 +33,7 @@ export function UploadCard({ maxBytes }: { maxBytes: number }) {
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [side, setSide] = useState<(typeof SIDES)[number]["value"]>("");
+  const [kind, setKind] = useState<(typeof KINDS)[number]["value"]>("OPERATION");
   const [dragging, setDragging] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
@@ -99,6 +105,7 @@ export function UploadCard({ maxBytes }: { maxBytes: number }) {
     form.append("file", file);
     form.append("title", title.trim());
     form.append("plannedSide", side);
+    form.append("documentKind", kind);
 
     // XHR rather than fetch: fetch cannot report upload progress, and a
     // six-minute WAV is tens of megabytes.
@@ -216,17 +223,35 @@ export function UploadCard({ maxBytes }: { maxBytes: number }) {
         <input ref={inputRef} type="file" aria-label="Izvēlēties audio failu" accept={ACCEPT} className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto] lg:items-center">
+      <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto_auto_auto] xl:items-center">
         <label htmlFor="recording-title" className="sr-only">Nosaukums</label>
         <Input
           id="recording-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Nosaukums, piem. Operācijas protokols"
+          placeholder="Nosaukums, piem. Holecistektomija 19.11."
           maxLength={200}
           disabled={uploading}
           className="h-10"
         />
+        <div className="flex items-center gap-2">
+          <span className="whitespace-nowrap text-[13px] text-muted-foreground">Dokuments</span>
+          <div className={CHIP_GROUP} data-slot="segmented" role="radiogroup" aria-label="Dokumenta veids">
+            {KINDS.map((k) => (
+              <button
+                key={k.value}
+                type="button"
+                role="radio"
+                aria-checked={kind === k.value}
+                data-state={kind === k.value ? "active" : "inactive"}
+                onClick={() => setKind(k.value)}
+                className={chipClass(kind === k.value)}
+              >
+                {k.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <span className="whitespace-nowrap text-[13px] text-muted-foreground">Plānotā puse</span>
           <div className={CHIP_GROUP} data-slot="segmented" role="radiogroup" aria-label="Plānotā operācijas puse">
